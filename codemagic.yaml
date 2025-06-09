@@ -3,8 +3,6 @@ workflows:
     name: Android Build
     max_build_duration: 60
     instance_type: mac_mini_m2
-    integrations:
-      google_play: default
     environment:
       groups:
         - google_credentials
@@ -19,15 +17,12 @@ workflows:
         script: flutter test
       - name: Build APK
         script: flutter build apk --release
-      - name: Build App Bundle
-        script: flutter build appbundle --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
-      - build/app/outputs/bundle/release/app-release.aab
     publishing:
       email:
         recipients:
-          - kimalexandr@yandex.ru
+          - alexandr.kim.1990@gmail.com
       google_play:
         credentials: $GOOGLE_PLAY_CREDENTIALS
         track: internal
@@ -38,14 +33,10 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
-      xcode: latest
-      cocoapods: default
       groups:
-        - apple_certificates
-        - apple_credentials
+        - google_credentials
       vars:
-        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
-        XCODE_SCHEME: "Runner"
+        BUNDLE_ID: "com.example.phoneAuthApp"
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
@@ -53,27 +44,19 @@ workflows:
         script: flutter analyze
       - name: Flutter test
         script: flutter test
-      - name: Install iOS dependencies
-        script: |
-          cd ios
-          pod install
-      - name: Build iOS
-        script: |
-          flutter build ios --release --no-codesign
+      - name: Build IPA
+        script: flutter build ipa --release
     artifacts:
       - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
     publishing:
       email:
         recipients:
-          - kimalexandr@yandex.ru
+          - alexandr.kim.1990@gmail.com
 
   web-workflow:
     name: Web Build
     max_build_duration: 30
-    instance_type: linux
+    instance_type: mac_mini_m2
     environment:
       groups:
         - google_credentials
@@ -91,7 +74,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - kimalexandr@yandex.ru
+          - alexandr.kim.1990@gmail.com
 
 variable_groups:
   - name: google_credentials
