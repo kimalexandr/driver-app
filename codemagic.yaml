@@ -80,5 +80,4 @@ variable_groups:
   - name: google_credentials
     variables:
       - key: GOOGLE_PLAY_CREDENTIALS
-        value: $GOOGLE_PLAY_CREDENTIALS
-        group: google_credentials 
+        value: $GOOGLE_PLAY_CREDENTIALS 
