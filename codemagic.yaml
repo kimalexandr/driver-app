@@ -3,6 +3,8 @@ workflows:
     name: Android Build
     max_build_duration: 60
     instance_type: mac_mini_m2
+    integrations:
+      google_play: default
     environment:
       groups:
         - google_credentials
@@ -29,6 +31,7 @@ workflows:
       google_play:
         credentials: $GOOGLE_PLAY_CREDENTIALS
         track: internal
+        changes_not_sent_for_review: true
 
   ios-workflow:
     name: iOS Build
@@ -88,4 +91,11 @@ workflows:
     publishing:
       email:
         recipients:
-          - kimalexandr@yandex.ru 
+          - kimalexandr@yandex.ru
+
+variable_groups:
+  - name: google_credentials
+    variables:
+      - key: GOOGLE_PLAY_CREDENTIALS
+        value: $GOOGLE_PLAY_CREDENTIALS
+        group: google_credentials 
