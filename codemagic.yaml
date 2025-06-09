@@ -27,9 +27,8 @@ workflows:
         recipients:
           - kimalexandr@yandex.ru
       google_play:
-        credentials: google_play_credentials
+        credentials: $GOOGLE_PLAY_CREDENTIALS
         track: internal
-        release_status: completed
 
   ios-workflow:
     name: iOS Build
