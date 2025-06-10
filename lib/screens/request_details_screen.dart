@@ -14,7 +14,7 @@ class RequestDetailsScreen extends StatelessWidget {
     final url = Uri.parse(
       'https://yandex.ru/maps/?text=${Uri.encodeComponent(address)}',
     );
-    if (await canLaunch(url.toString())) {
+    if (await canLaunchUrl(url)) {
       await launchUrl(url);
     }
   }
