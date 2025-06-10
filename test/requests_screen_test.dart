@@ -7,10 +7,10 @@ void main() {
       'RequestsScreen displays list of requests and navigates to details',
       (WidgetTester tester) async {
     // Используем companyName, который реально используется в приложении
-    final testCompanyName = 'Компания 1';
+    const testCompanyName = 'Компания 1';
 
     // Создаем экран заявок
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
       home: RequestsScreen(companyName: testCompanyName),
     ));
     await tester.pumpAndSettle(); // Ждем полной отрисовки
