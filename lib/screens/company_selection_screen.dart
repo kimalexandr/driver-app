@@ -21,53 +21,53 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Выбор компании')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Выберите вашу компанию:',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            ...List.generate(
-              _companies.length,
-              (index) => RadioListTile<String>(
-                title: Text(_companies[index]),
-                value: _companies[index],
-                groupValue: _selectedCompany,
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedCompany = value;
-                  });
-                },
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Выбор компании')),
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Выберите вашу компанию:',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed:
-                  _selectedCompany == null
-                      ? null
-                      : () {
+              const SizedBox(height: 20),
+              ...List.generate(
+                _companies.length,
+                (index) => RadioListTile<String>(
+                  title: Text(_companies[index]),
+                  value: _companies[index],
+                  groupValue: _selectedCompany,
+                  onChanged: (String? value) {
+                    setState(() {
+                      _selectedCompany = value;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _selectedCompany == null
+                    ? null
+                    : () {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder:
-                                (context) => RequestsScreen(
-                                  companyName: _selectedCompany!,
-                                ),
+                            builder: (context) => RequestsScreen(
+                              companyName: _selectedCompany!,
+                            ),
                           ),
                         );
                       },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text('Подтвердить'),
               ),
-              child: const Text('Подтвердить'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

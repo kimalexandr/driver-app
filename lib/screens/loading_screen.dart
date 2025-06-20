@@ -6,10 +6,12 @@ import 'unloading_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   final Map<String, dynamic> request;
+  final void Function(Map<String, dynamic>)? onArchive;
 
   const LoadingScreen({
     super.key,
     required this.request,
+    this.onArchive,
   });
 
   @override
@@ -18,9 +20,23 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> {
   bool _isSigned = false;
-  bool _isArrived = false;
-  bool _isDeparted = false;
   File? _ttnPhoto;
+
+  int _loadingStep = 0; // 0 - Въезд, 1 - Погрузка, 2 - Выезд, 3 - В пути
+
+  final List<String> _stepTitles = [
+    'Въезд на территорию погрузки',
+    'Погрузка на пункте',
+    'Выезд с территории погрузки',
+    'В пути к пункту выгрузки',
+  ];
+
+  final List<String> _buttonTitles = [
+    'Подтвердить въезд',
+    'Подтвердить погрузку',
+    'Подтвердить выезд',
+    'В путь к пункту выгрузки',
+  ];
 
   Future<void> _openYandexMaps(String address) async {
     final url = Uri.parse(
@@ -71,152 +87,130 @@ class _LoadingScreenState extends State<LoadingScreen> {
     );
   }
 
+  void _nextStep() {
+    setState(() {
+      if (_loadingStep < 3) {
+        _loadingStep++;
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UnloadingScreen(
+                request: widget.request, onArchive: widget.onArchive),
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Заявка №${widget.request['number']} - Погрузка'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoCard(
-              icon: Icons.location_on,
-              title: 'Адрес',
-              content: widget.request['loading_address'],
-              onTap: () => _openYandexMaps(widget.request['loading_address']),
-            ),
-            _buildInfoCard(
-              icon: Icons.calendar_today,
-              title: 'Дата',
-              content: widget.request['loading_date'],
-            ),
-            _buildInfoCard(
-              icon: Icons.business,
-              title: 'Клиент',
-              content: widget.request['loading_company'],
-            ),
-            _buildInfoCard(
-              icon: Icons.door_front_door,
-              title: 'Ворота',
-              content: widget.request['loading_gates'],
-            ),
-            _buildInfoCard(
-              icon: Icons.access_time,
-              title: 'Время',
-              content:
-                  '${widget.request['loading_time_from']} - ${widget.request['loading_time_to']}',
-            ),
-            _buildInfoCard(
-              icon: Icons.person,
-              title: 'Диспетчер',
-              content: widget.request['loading_dispatcher'],
-            ),
-            _buildInfoCard(
-              icon: Icons.phone,
-              title: 'Телефон диспетчера',
-              content: widget.request['loading_dispatcher_phone'],
-            ),
-            _buildInfoCard(
-              icon: Icons.comment,
-              title: 'Комментарий',
-              content: widget.request['loading_comment'],
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Фото ТТН',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Заявка №${widget.request['number']} - Погрузка'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoCard(
+                icon: Icons.location_on,
+                title: 'Адрес',
+                content: widget.request['loading_address'],
+                onTap: () => _openYandexMaps(widget.request['loading_address']),
               ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
+              _buildInfoCard(
+                icon: Icons.calendar_today,
+                title: 'Дата',
+                content: widget.request['loading_date'],
               ),
-              child: _ttnPhoto == null
-                  ? Center(
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, size: 48),
-                        onPressed: _takePhoto,
-                      ),
-                    )
-                  : Image.file(
-                      _ttnPhoto!,
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            const SizedBox(height: 24),
-            if (!_isSigned && !_isArrived)
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: _showSignatureDialog,
-                  icon: const Icon(Icons.draw),
-                  label: const Text('Подписать'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(200, 48),
-                  ),
+              _buildInfoCard(
+                icon: Icons.business,
+                title: 'Клиент',
+                content: widget.request['loading_company'],
+              ),
+              _buildInfoCard(
+                icon: Icons.door_front_door,
+                title: 'Ворота',
+                content: widget.request['loading_gates'],
+              ),
+              _buildInfoCard(
+                icon: Icons.access_time,
+                title: 'Время',
+                content:
+                    '${widget.request['loading_time_from']} - ${widget.request['loading_time_to']}',
+              ),
+              _buildInfoCard(
+                icon: Icons.person,
+                title: 'Диспетчер',
+                content: widget.request['loading_dispatcher'],
+              ),
+              _buildInfoCard(
+                icon: Icons.phone,
+                title: 'Телефон диспетчера',
+                content: widget.request['loading_dispatcher_phone'],
+              ),
+              _buildInfoCard(
+                icon: Icons.comment,
+                title: 'Комментарий',
+                content: widget.request['loading_comment'],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Фото ТТН',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            const SizedBox(height: 24),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: _ttnPhoto == null || !_isSigned
-                    ? null
-                    : () {
-                        setState(() {
-                          _isArrived = true;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Отметка о прибытии сохранена'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                icon: Icon(_isArrived ? Icons.check_circle : Icons.location_on),
-                label: Text(
-                    _isArrived ? 'Прибыл на погрузку' : 'В путь на погрузку'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(200, 48),
-                  backgroundColor: _isArrived ? Colors.green : Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-            if (_isArrived && !_isDeparted) ...[
               const SizedBox(height: 16),
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isDeparted = true;
-                    });
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UnloadingScreen(
-                          request: widget.request,
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _ttnPhoto == null
+                    ? Center(
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt, size: 48),
+                          onPressed: _takePhoto,
                         ),
+                      )
+                    : Image.file(
+                        _ttnPhoto!,
+                        fit: BoxFit.cover,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.directions_car),
-                  label: const Text('Убыл с погрузки'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(200, 48),
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      _stepTitles[_loadingStep],
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _nextStep,
+                      icon: const Icon(Icons.check_circle),
+                      label: Text(_buttonTitles[_loadingStep]),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(200, 48),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );

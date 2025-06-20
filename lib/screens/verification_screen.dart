@@ -49,56 +49,58 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Подтверждение кода')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Введите код подтверждения',
-              style: TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(
-                6,
-                (index) => SizedBox(
-                  width: 45,
-                  child: TextField(
-                    controller: _controllers[index],
-                    focusNode: _focusNodes[index],
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    decoration: const InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Подтверждение кода')),
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Введите код подтверждения',
+                style: TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(
+                  6,
+                  (index) => SizedBox(
+                    width: 45,
+                    child: TextField(
+                      controller: _controllers[index],
+                      focusNode: _focusNodes[index],
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      maxLength: 1,
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        border: OutlineInputBorder(),
+                      ),
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (value) {
+                        if (value.isNotEmpty && index < 5) {
+                          _focusNodes[index + 1].requestFocus();
+                        }
+                        if (index == 5 && value.isNotEmpty) {
+                          _verifyCode();
+                        }
+                      },
                     ),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (value) {
-                      if (value.isNotEmpty && index < 5) {
-                        _focusNodes[index + 1].requestFocus();
-                      }
-                      if (index == 5 && value.isNotEmpty) {
-                        _verifyCode();
-                      }
-                    },
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _verifyCode,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _verifyCode,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text('Подтвердить'),
               ),
-              child: const Text('Подтвердить'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

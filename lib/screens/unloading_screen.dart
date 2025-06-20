@@ -3,10 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 class UnloadingScreen extends StatefulWidget {
   final Map<String, dynamic> request;
+  final void Function(Map<String, dynamic>)? onArchive;
 
   const UnloadingScreen({
     super.key,
     required this.request,
+    this.onArchive,
   });
 
   @override
@@ -14,7 +16,21 @@ class UnloadingScreen extends StatefulWidget {
 }
 
 class _UnloadingScreenState extends State<UnloadingScreen> {
-  bool _isArrived = false;
+  int _unloadingStep = 0; // 0 - Въезд, 1 - Выгрузка, 2 - Выезд, 3 - Завершена
+
+  final List<String> _stepTitles = [
+    'Въезд на территорию выгрузки',
+    'Выгрузка на пункте',
+    'Выезд с территории выгрузки',
+    'Заявка завершена',
+  ];
+
+  final List<String> _buttonTitles = [
+    'Подтвердить въезд',
+    'Подтвердить выгрузку',
+    'Подтвердить выезд',
+    'Заявка завершена',
+  ];
 
   Future<void> _openYandexMaps(String address) async {
     final url = Uri.parse(
@@ -25,108 +41,107 @@ class _UnloadingScreenState extends State<UnloadingScreen> {
     }
   }
 
+  void _nextStep() {
+    setState(() {
+      if (_unloadingStep < 3) {
+        _unloadingStep++;
+      } else {
+        if (widget.onArchive != null) {
+          widget.onArchive!(widget.request);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Заявка успешно завершена и перенесена в архив'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Заявка №${widget.request['number']} - Разгрузка'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoCard(
-              icon: Icons.location_on,
-              title: 'Адрес',
-              content: widget.request['unloading_address'],
-              onTap: () => _openYandexMaps(widget.request['unloading_address']),
-            ),
-            _buildInfoCard(
-              icon: Icons.calendar_today,
-              title: 'Дата',
-              content: widget.request['unloading_date'],
-            ),
-            _buildInfoCard(
-              icon: Icons.business,
-              title: 'Клиент',
-              content: widget.request['unloading_company'],
-            ),
-            _buildInfoCard(
-              icon: Icons.door_front_door,
-              title: 'Ворота',
-              content: widget.request['unloading_gates'],
-            ),
-            _buildInfoCard(
-              icon: Icons.access_time,
-              title: 'Время',
-              content:
-                  '${widget.request['unloading_time_from']} - ${widget.request['unloading_time_to']}',
-            ),
-            _buildInfoCard(
-              icon: Icons.person,
-              title: 'Диспетчер',
-              content: widget.request['unloading_dispatcher'],
-            ),
-            _buildInfoCard(
-              icon: Icons.phone,
-              title: 'Телефон диспетчера',
-              content: widget.request['unloading_dispatcher_phone'],
-            ),
-            _buildInfoCard(
-              icon: Icons.comment,
-              title: 'Комментарий',
-              content: widget.request['unloading_comment'],
-            ),
-            const SizedBox(height: 24),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _isArrived = true;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Отметка о прибытии сохранена'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-                icon: Icon(_isArrived ? Icons.check_circle : Icons.location_on),
-                label: Text(
-                    _isArrived ? 'Прибыл на разгрузку' : 'В путь на разгрузку'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(200, 48),
-                  backgroundColor: _isArrived ? Colors.green : Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Заявка №${widget.request['number']} - Разгрузка'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoCard(
+                icon: Icons.location_on,
+                title: 'Адрес',
+                content: widget.request['unloading_address'] ?? '',
+                onTap: () =>
+                    _openYandexMaps(widget.request['unloading_address'] ?? ''),
               ),
-            ),
-            if (_isArrived) ...[
-              const SizedBox(height: 16),
+              _buildInfoCard(
+                icon: Icons.calendar_today,
+                title: 'Дата',
+                content: widget.request['unloading_date'] ?? '',
+              ),
+              _buildInfoCard(
+                icon: Icons.business,
+                title: 'Клиент',
+                content: widget.request['unloading_company'] ?? '',
+              ),
+              _buildInfoCard(
+                icon: Icons.door_front_door,
+                title: 'Ворота',
+                content: widget.request['unloading_gates'] ?? '',
+              ),
+              _buildInfoCard(
+                icon: Icons.access_time,
+                title: 'Время',
+                content:
+                    '${widget.request['unloading_time_from'] ?? ''} - ${widget.request['unloading_time_to'] ?? ''}',
+              ),
+              _buildInfoCard(
+                icon: Icons.person,
+                title: 'Диспетчер',
+                content: widget.request['unloading_dispatcher'] ?? '',
+              ),
+              _buildInfoCard(
+                icon: Icons.phone,
+                title: 'Телефон диспетчера',
+                content: widget.request['unloading_dispatcher_phone'] ?? '',
+              ),
+              _buildInfoCard(
+                icon: Icons.comment,
+                title: 'Комментарий',
+                content: widget.request['unloading_comment'] ?? '',
+              ),
+              const SizedBox(height: 24),
               Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Реализовать завершение заявки
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Заявка успешно завершена'),
-                        backgroundColor: Colors.green,
+                child: Column(
+                  children: [
+                    Text(
+                      _stepTitles[_unloadingStep],
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    );
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text('Завершить заявку'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(200, 48),
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _nextStep,
+                      icon: const Icon(Icons.check_circle),
+                      label: Text(_buttonTitles[_unloadingStep]),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(200, 48),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
