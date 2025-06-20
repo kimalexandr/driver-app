@@ -19,7 +19,6 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
-  bool _isSigned = false;
   File? _ttnPhoto;
 
   int _loadingStep = 0; // 0 - Въезд, 1 - Погрузка, 2 - Выезд, 3 - В пути
@@ -55,36 +54,6 @@ class _LoadingScreenState extends State<LoadingScreen> {
         _ttnPhoto = File(pickedFile.path);
       });
     }
-  }
-
-  void _showSignatureDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Подпись'),
-        content: const SizedBox(
-          height: 200,
-          child: Center(
-            child: Text('Здесь будет поле для подписи'),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _isSigned = true;
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Подписать'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _nextStep() {

@@ -16,7 +16,7 @@ class RequestDetailsScreen extends StatefulWidget {
 }
 
 class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   Future<void> _openYandexMaps(String address) async {
     // Здесь будет логика открытия Яндекс Карт
