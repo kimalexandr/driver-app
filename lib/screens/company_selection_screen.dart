@@ -34,17 +34,21 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              ...List.generate(
-                _companies.length,
-                (index) => RadioListTile<String>(
-                  title: Text(_companies[index]),
-                  value: _companies[index],
-                  groupValue: _selectedCompany,
-                  onChanged: (String? value) {
-                    setState(() {
-                      _selectedCompany = value;
-                    });
-                  },
+              RadioGroup<String>(
+                groupValue: _selectedCompany,
+                onChanged: (String? value) {
+                  setState(() {
+                    _selectedCompany = value;
+                  });
+                },
+                child: Column(
+                  children: [
+                    for (final company in _companies)
+                      RadioListTile<String>(
+                        title: Text(company),
+                        value: company,
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
