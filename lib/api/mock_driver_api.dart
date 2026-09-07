@@ -3,6 +3,7 @@ import '../models/driver_profile.dart';
 import '../models/trip.dart';
 import 'api_exception.dart';
 import 'driver_api.dart';
+import 'service_login.dart';
 import 'token_store.dart';
 
 class MockDriverApi implements DriverApi {
@@ -10,12 +11,17 @@ class MockDriverApi implements DriverApi {
 
   MockDriverApi({this.tokenStore});
 
-  static const mockCode = '1234';
+  static const mockCode = ServiceLogin.code;
 
   DriverProfile _driver = const DriverProfile(
     id: '1',
     name: 'Иванов Иван Иванович',
     phone: '79991234567',
+    carrierName: 'ООО Перевозчик',
+    vehicle: 'КАМАЗ · А123БВ777',
+    licenseNumber: '99 00 123456',
+    licenseCategories: 'C, CE',
+    licenseIssuedAt: '2019-04-12',
   );
 
   final List<Trip> _trips = [
@@ -94,6 +100,19 @@ class MockDriverApi implements DriverApi {
         ),
       ],
     ),
+    const Trip(
+      id: '3',
+      number: '003',
+      status: 'delivered',
+      statusLabel: 'Доставлено',
+      from: 'Тула',
+      to: 'Рязань',
+      dateStart: '10.03.2024 08:00',
+      vehicle: 'С003СС71',
+      cargo: 'Упаковка',
+      weightKg: 400,
+      volumeM3: 2,
+    ),
   ];
 
   @override
@@ -109,7 +128,8 @@ class MockDriverApi implements DriverApi {
     required String phone,
     required String code,
   }) async {
-    if (code != mockCode) {
+    final resolved = ServiceLogin.resolve(entered: code, debugCode: mockCode);
+    if (resolved != mockCode && code != mockCode) {
       throw const ApiException('Неверный код', statusCode: 422);
     }
     _driver = DriverProfile(id: _driver.id, name: _driver.name, phone: phone);

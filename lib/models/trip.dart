@@ -176,6 +176,14 @@ class Trip {
   bool get canStart => status == 'created' || status == 'assigned';
   bool get canDeliver => status == 'in_transit';
   bool get isInTransit => status == 'in_transit';
+  bool get isCompleted => status == 'delivered';
+
+  String get destination {
+    if (canStart) {
+      return startAddress.isNotEmpty ? startAddress : from;
+    }
+    return finishAddress.isNotEmpty ? finishAddress : to;
+  }
 
   num? get totalWeightKg {
     if (weightKg != null) return weightKg;

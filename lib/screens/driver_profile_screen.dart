@@ -33,7 +33,12 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       return;
     }
     try {
-      final driver = await scope.api.me();
+      final loaded = await scope.api.me();
+      final previous = scope.auth.driver;
+      final driver = loaded.phone.isEmpty && (previous?.phone.isNotEmpty ?? false)
+          ? loaded.copyWith(phone: previous!.phone)
+          : loaded;
+      scope.auth.applyProfile(driver);
       if (!mounted) return;
       setState(() {
         _driver = driver;
@@ -70,11 +75,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       appBar: AppBar(title: const Text('Профиль')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : ListView(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-              child: Column(
-                children: [
-                  CircleAvatar(
+              children: [
+                Center(
+                  child: CircleAvatar(
                     radius: 40,
                     backgroundColor: AppColors.navy,
                     child: Text(
@@ -86,31 +91,40 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(_error!, style: const TextStyle(color: AppColors.red)),
-                    ),
-                  _card('ФИО', driver?.name ?? '—'),
-                  _card('Телефон', driver?.phone ?? '—'),
-                  const Spacer(),
-                  OutlinedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Выйти'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.red,
-                      side: const BorderSide(color: AppColors.red),
-                    ),
+                ),
+                const SizedBox(height: 20),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(_error!, style: const TextStyle(color: AppColors.red)),
                   ),
-                ],
-              ),
+                _card('ФИО', driver?.name),
+                _card('Телефон', driver?.phone),
+                _card('Перевозчик', driver?.carrierName),
+                _card('ТС', driver?.vehicle),
+                _card('ВУ, серия и номер', driver?.licenseNumber),
+                _card('Категории ВУ', driver?.licenseCategories),
+                _card('Дата выдачи ВУ', driver?.licenseIssuedAt),
+                _card('Паспорт', driver?.passportNumber),
+                _card('ИНН', driver?.inn),
+                _card('Комментарий', driver?.comment),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Выйти'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.red,
+                    side: const BorderSide(color: AppColors.red),
+                  ),
+                ),
+              ],
             ),
     );
   }
 
-  Widget _card(String title, String content) {
+  Widget _card(String title, String? content) {
+    if (content == null || content.trim().isEmpty) return const SizedBox.shrink();
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),

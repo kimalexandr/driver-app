@@ -7,6 +7,7 @@ import 'package:phone_auth_app/api/api_client.dart';
 import 'package:phone_auth_app/api/api_exception.dart';
 import 'package:phone_auth_app/api/driver_api.dart';
 import 'package:phone_auth_app/api/mock_driver_api.dart';
+import 'package:phone_auth_app/api/service_login.dart';
 import 'package:phone_auth_app/api/token_store.dart';
 import 'package:phone_auth_app/services/phone.dart';
 
@@ -17,17 +18,24 @@ void main() {
     expect(normalizePhone('79991234567'), '79991234567');
   });
 
-  test('mock выдаёт debug_code и пускает с кодом 1234', () async {
+  test('служебный код 1111 подменяет debug_code', () {
+    expect(ServiceLogin.code, '1111');
+    expect(ServiceLogin.resolve(entered: '1111', debugCode: '5821'), '5821');
+    expect(ServiceLogin.resolve(entered: '1111', debugCode: null), '1111');
+    expect(ServiceLogin.resolve(entered: '5821', debugCode: '5821'), '5821');
+  });
+
+  test('mock выдаёт debug_code и пускает с кодом 1111', () async {
     final api = MockDriverApi();
     final challenge = await api.requestCode('79991234567');
-    expect(challenge.debugCode, '1234');
+    expect(challenge.debugCode, '1111');
 
     await expectLater(
       api.verifyCode(phone: '79991234567', code: '0000'),
       throwsA(isA<ApiException>()),
     );
 
-    final session = await api.verifyCode(phone: '79991234567', code: '1234');
+    final session = await api.verifyCode(phone: '79991234567', code: '1111');
     expect(session.accessToken, isNotEmpty);
     expect(session.driver.name, isNotEmpty);
   });

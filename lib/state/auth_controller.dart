@@ -50,6 +50,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void applyProfile(DriverProfile profile) {
+    driver = profile;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     await tokenStore.clear();
     driver = null;

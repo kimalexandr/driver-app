@@ -14,6 +14,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Рейсы'), findsOneWidget);
+    expect(find.text('Активные'), findsOneWidget);
+    expect(find.text('Завершённые'), findsOneWidget);
     expect(find.text('Рейс №001'), findsOneWidget);
     expect(find.text('Рейс №002'), findsOneWidget);
     expect(find.text('Москва → Санкт-Петербург'), findsOneWidget);
@@ -27,5 +29,22 @@ void main() {
 
     expect(find.text('Рейс №001'), findsOneWidget);
     expect(find.text('Откуда'), findsOneWidget);
+  });
+
+  testWidgets('RequestsScreen shows completed trips on second tab', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: RequestsScreen(
+        companyName: 'Рейсы',
+        api: MockDriverApi(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Завершённые'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Рейс №003'), findsOneWidget);
+    expect(find.text('Доставлено'), findsOneWidget);
+    expect(find.text('Рейс №001'), findsNothing);
   });
 }

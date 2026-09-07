@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/api_exception.dart';
+import '../api/service_login.dart';
 import '../models/auth_session.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
@@ -55,7 +56,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
       final scope = AppScope.of(context);
       final session = await scope.api.verifyCode(
         phone: challenge.phone,
-        code: code,
+        code: ServiceLogin.resolve(
+          entered: code,
+          debugCode: challenge.debugCode,
+        ),
       );
       await scope.auth.applySession(session);
       if (!mounted) return;
@@ -95,28 +99,30 @@ class _VerificationScreenState extends State<VerificationScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Введите 4-значный код',
+                'Введите 4-значный код из SMS или служебный код',
                 style: TextStyle(fontSize: 16, color: AppColors.muted),
               ),
-              if (debugCode != null && debugCode.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE8D2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Text(
-                    'Код для отладки: $debugCode',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.orange,
-                      fontWeight: FontWeight.w700,
-                    ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE8D2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  debugCode != null &&
+                          debugCode.isNotEmpty &&
+                          debugCode != ServiceLogin.code
+                      ? 'Служебный код: ${ServiceLogin.code}  ·  код сервера: $debugCode'
+                      : 'Служебный код: ${ServiceLogin.code}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.orange,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
+              ),
               const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

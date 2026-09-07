@@ -7,7 +7,7 @@ workflows:
       groups:
         - google_credentials
       vars:
-        PACKAGE_NAME: "com.example.phone_auth_app"
+        PACKAGE_NAME: "ru.sevenrights.driver"
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
@@ -36,7 +36,7 @@ workflows:
       groups:
         - google_credentials
       vars:
-        BUNDLE_ID: "com.example.phoneAuthApp"
+        BUNDLE_ID: "ru.sevenrights.driver"
     scripts:
       - name: Get Flutter packages
         script: flutter pub get

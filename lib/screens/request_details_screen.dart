@@ -6,6 +6,7 @@ import '../api/api_exception.dart';
 import '../api/driver_api.dart';
 import '../models/trip.dart';
 import '../services/location_service.dart';
+import '../services/yandex_maps.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
@@ -233,6 +234,9 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             title: 'Откуда',
             city: _trip.from,
             address: _trip.startAddress,
+            onTap: () => openYandexRoute(
+              to: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
+            ),
           ),
           Container(
             margin: const EdgeInsets.only(left: 11, top: 4, bottom: 4),
@@ -245,6 +249,9 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             title: 'Куда',
             city: _trip.to,
             address: _trip.finishAddress,
+            onTap: () => openYandexRoute(
+              to: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -267,34 +274,46 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     required String title,
     required String city,
     required String address,
+    VoidCallback? onTap,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 22, color: AppColors.orange),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-              const SizedBox(height: 2),
-              Text(
-                city,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-              if (address.isNotEmpty) ...[
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 22, color: AppColors.orange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                 const SizedBox(height: 2),
-                Text(address, style: const TextStyle(fontSize: 14, color: AppColors.ink)),
+                Text(
+                  city,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                if (address.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    address,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.ink,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -451,6 +470,12 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 label: const Text('Отправить местоположение'),
               ),
             ],
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => openYandexRoute(to: _trip.destination),
+              icon: const Icon(Icons.navigation_outlined),
+              label: const Text('Маршрут'),
+            ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: _busy ? null : _attachPhoto,

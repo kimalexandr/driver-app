@@ -47,5 +47,8 @@ void main() {
     expect(trip.shipments.single.weightKg, 800);
     expect(formatKg(trip.weightKg), '1200 кг');
     expect(formatM3(trip.volumeM3), '6.5 м³');
+    expect(trip.destination, 'Москва');
+    expect(trip.copyWith(status: 'in_transit').destination, 'Казань');
+    expect(trip.copyWith(status: 'delivered').isCompleted, isTrue);
   });
 }

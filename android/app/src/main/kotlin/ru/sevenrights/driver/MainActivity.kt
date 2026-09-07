@@ -1,4 +1,4 @@
-package com.example.phone_auth_app
+package ru.sevenrights.driver
 
 import io.flutter.embedding.android.FlutterActivity
 
