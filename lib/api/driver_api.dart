@@ -1,5 +1,6 @@
 import '../models/auth_session.dart';
 import '../models/driver_profile.dart';
+import '../models/json_fields.dart';
 import '../models/trip.dart';
 import 'api_client.dart';
 import 'api_exception.dart';
@@ -84,13 +85,14 @@ class HttpDriverApi implements DriverApi {
   @override
   Future<DriverProfile> me() async {
     final json = await client.get('/me');
-    return DriverProfile.fromJson(json);
+    return DriverProfile.fromJson(unwrapJson(json));
   }
 
   @override
   Future<List<Trip>> listTrips() async {
     final json = await client.get('/trips');
-    final items = json['trips'];
+    final root = unwrapJson(json);
+    final items = root['trips'] ?? root['items'] ?? json['trips'] ?? json['data'];
     if (items is! List) return const [];
     return items
         .whereType<Map>()
@@ -101,11 +103,12 @@ class HttpDriverApi implements DriverApi {
   @override
   Future<Trip> getTrip(String id) async {
     final json = await client.get('/trips/$id');
-    final trip = json['trip'];
+    final root = unwrapJson(json);
+    final trip = root['trip'] ?? root;
     if (trip is Map) {
       return Trip.fromJson(Map<String, dynamic>.from(trip));
     }
-    return Trip.fromJson(json);
+    return Trip.fromJson(root);
   }
 
   @override
@@ -117,9 +120,13 @@ class HttpDriverApi implements DriverApi {
       '/trips/$tripId/status',
       body: {'status': status},
     );
-    final trip = json['trip'];
+    final root = unwrapJson(json);
+    final trip = root['trip'];
     if (trip is Map) {
       return Trip.fromJson(Map<String, dynamic>.from(trip));
+    }
+    if (root['id'] != null || root['number'] != null) {
+      return Trip.fromJson(root);
     }
     return getTrip(tripId);
   }

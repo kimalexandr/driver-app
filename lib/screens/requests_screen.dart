@@ -85,6 +85,22 @@ class _RequestsScreenState extends State<RequestsScreen> {
     await _load();
   }
 
+  Future<void> _openRoute(Trip trip) async {
+    final opened = await openYandexRoute(
+      to: trip.destination,
+      toLat: trip.destinationLat,
+      toLng: trip.destinationLng,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Нет адреса или координат для маршрута'),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -197,9 +213,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                             ),
                             const SizedBox(height: 14),
                             GestureDetector(
-                              onTap: () => openYandexRoute(to: trip.destination),
+                              onTap: () => _openRoute(trip),
                               child: Text(
-                                '${trip.from} → ${trip.to}',
+                                '${trip.from.isNotEmpty ? trip.from : trip.startAddress} → ${trip.to.isNotEmpty ? trip.to : trip.finishAddress}',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -224,7 +240,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   ),
                                 ),
                                 TextButton.icon(
-                                  onPressed: () => openYandexRoute(to: trip.destination),
+                                  onPressed: () => _openRoute(trip),
                                   icon: const Icon(Icons.navigation_outlined, size: 18),
                                   label: const Text('Маршрут'),
                                 ),

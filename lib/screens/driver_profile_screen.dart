@@ -34,10 +34,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     }
     try {
       final loaded = await scope.api.me();
-      final previous = scope.auth.driver;
-      final driver = loaded.phone.isEmpty && (previous?.phone.isNotEmpty ?? false)
-          ? loaded.copyWith(phone: previous!.phone)
-          : loaded;
+      final driver = loaded.orFallback(scope.auth.driver);
       scope.auth.applyProfile(driver);
       if (!mounted) return;
       setState(() {
@@ -98,8 +95,8 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(_error!, style: const TextStyle(color: AppColors.red)),
                   ),
-                _card('ФИО', driver?.name),
-                _card('Телефон', driver?.phone),
+                _card('ФИО', driver?.name, requiredField: true),
+                _card('Телефон', driver?.phone, requiredField: true),
                 _card('Перевозчик', driver?.carrierName),
                 _card('ТС', driver?.vehicle),
                 _card('ВУ, серия и номер', driver?.licenseNumber),
@@ -123,8 +120,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     );
   }
 
-  Widget _card(String title, String? content) {
-    if (content == null || content.trim().isEmpty) return const SizedBox.shrink();
+  Widget _card(String title, String? content, {bool requiredField = false}) {
+    if ((content == null || content.trim().isEmpty) && !requiredField) {
+      return const SizedBox.shrink();
+    }
+    content = (content == null || content.trim().isEmpty) ? '—' : content;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),

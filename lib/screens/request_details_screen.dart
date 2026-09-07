@@ -47,7 +47,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     try {
       final trip = await api.getTrip(_trip.id);
       if (!mounted) return;
-      setState(() => _trip = trip);
+      setState(() => _trip = trip.orFallback(_trip));
     } on ApiException catch (error) {
       if (!mounted) return;
       _showError(error.message);
@@ -74,12 +74,23 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     try {
       final trip = await api.updateTripStatus(tripId: _trip.id, status: status);
       if (!mounted) return;
-      setState(() => _trip = trip);
+      setState(() => _trip = trip.orFallback(_trip));
     } on ApiException catch (error) {
       if (!mounted) return;
       _showError(error.message);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openRoute({
+    required String address,
+    double? lat,
+    double? lng,
+  }) async {
+    final opened = await openYandexRoute(to: address, toLat: lat, toLng: lng);
+    if (!opened && mounted) {
+      _showError('Нет адреса или координат для маршрута');
     }
   }
 
@@ -234,8 +245,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             title: 'Откуда',
             city: _trip.from,
             address: _trip.startAddress,
-            onTap: () => openYandexRoute(
-              to: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
+            onTap: () => _openRoute(
+              address: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
+              lat: _trip.startLat,
+              lng: _trip.startLng,
             ),
           ),
           Container(
@@ -249,8 +262,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             title: 'Куда',
             city: _trip.to,
             address: _trip.finishAddress,
-            onTap: () => openYandexRoute(
-              to: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
+            onTap: () => _openRoute(
+              address: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
+              lat: _trip.finishLat,
+              lng: _trip.finishLng,
             ),
           ),
           const SizedBox(height: 14),
@@ -290,7 +305,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(
-                  city,
+                  city.isNotEmpty ? city : 'Адрес не указан',
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -472,7 +487,11 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             ],
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: () => openYandexRoute(to: _trip.destination),
+              onPressed: () => _openRoute(
+                address: _trip.destination,
+                lat: _trip.destinationLat,
+                lng: _trip.destinationLng,
+              ),
               icon: const Icon(Icons.navigation_outlined),
               label: const Text('Маршрут'),
             ),

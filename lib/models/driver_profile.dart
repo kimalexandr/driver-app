@@ -1,29 +1,4 @@
-String _text(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final value = json[key];
-    if (value == null || value is Map) continue;
-    if (value is List) {
-      final text = value
-          .where((item) => item != null && item is! Map)
-          .map((item) => item.toString().trim())
-          .where((item) => item.isNotEmpty && item != 'null')
-          .join(', ');
-      if (text.isNotEmpty) return text;
-      continue;
-    }
-    final text = value.toString().trim();
-    if (text.isNotEmpty && text != 'null') return text;
-  }
-  return '';
-}
-
-Map<String, dynamic>? _map(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final value = json[key];
-    if (value is Map) return Map<String, dynamic>.from(value);
-  }
-  return null;
-}
+import 'json_fields.dart';
 
 class DriverProfile {
   final String id;
@@ -80,53 +55,104 @@ class DriverProfile {
     );
   }
 
+  DriverProfile orFallback(DriverProfile? other) {
+    if (other == null) return this;
+    String pick(String value, String fallback) =>
+        value.isNotEmpty ? value : fallback;
+    return DriverProfile(
+      id: pick(id, other.id),
+      name: pick(name, other.name),
+      phone: pick(phone, other.phone),
+      carrierName: pick(carrierName, other.carrierName),
+      vehicle: pick(vehicle, other.vehicle),
+      licenseNumber: pick(licenseNumber, other.licenseNumber),
+      licenseCategories: pick(licenseCategories, other.licenseCategories),
+      licenseIssuedAt: pick(licenseIssuedAt, other.licenseIssuedAt),
+      passportNumber: pick(passportNumber, other.passportNumber),
+      inn: pick(inn, other.inn),
+      comment: pick(comment, other.comment),
+    );
+  }
+
   factory DriverProfile.fromJson(Map<String, dynamic> json) {
-    final nested = json['driver'];
-    final source = nested is Map ? Map<String, dynamic>.from(nested) : json;
-    final vehicleMap = _map(source, ['vehicle', 'car', 'truck']);
-    final licenseMap = _map(source, ['license', 'driver_license']);
-    final carrierMap = _map(source, ['carrier', 'company', 'organization']);
+    final root = unwrapJson(json);
+    final nested = jsonMap(root, ['driver', 'user', 'profile']);
+    final source = nested ?? root;
+    final vehicleMap = jsonMap(source, ['vehicle', 'car', 'truck']);
+    final licenseMap = jsonMap(source, ['license', 'driver_license']);
+    final carrierMap = jsonMap(source, ['carrier', 'company', 'organization']);
     final vehicleText = vehicleMap == null
-        ? _text(source, ['vehicle', 'vehicle_number', 'car_number', 'truck_number'])
+        ? jsonText(source, [
+            'vehicle',
+            'vehicle_number',
+            'car_number',
+            'truck_number',
+          ])
         : [
             [
-              _text(vehicleMap, ['brand', 'name']),
-              _text(vehicleMap, ['model']),
+              jsonText(vehicleMap, ['brand', 'name']),
+              jsonText(vehicleMap, ['model']),
             ].where((part) => part.isNotEmpty).join(' '),
-            _text(vehicleMap, ['number', 'reg_number', 'plate']),
+            jsonText(vehicleMap, ['number', 'reg_number', 'plate']),
           ].where((part) => part.isNotEmpty).join(' · ');
 
+    var name = jsonText(source, ['name', 'full_name', 'fio']);
+    if (name.isEmpty) {
+      name = [
+        jsonText(source, ['last_name', 'surname', 'lastname']),
+        jsonText(source, ['first_name', 'firstname']),
+        jsonText(source, ['middle_name', 'patronymic']),
+      ].where((part) => part.isNotEmpty).join(' ');
+    }
+
+    final licenseNumber = licenseMap == null
+        ? [
+            jsonText(source, ['license_series', 'vu_series']),
+            jsonText(source, [
+              'license_number',
+              'driver_license',
+              'license',
+              'vu_number',
+            ]),
+          ].where((part) => part.isNotEmpty).join(' ')
+        : [
+            jsonText(licenseMap, ['series']),
+            jsonText(licenseMap, ['number', 'series_number', 'value']),
+          ].where((part) => part.isNotEmpty).join(' ');
+
+    final passport = [
+      jsonText(source, ['passport_series']),
+      jsonText(source, ['passport_number', 'passport', 'passport_series_number']),
+    ].where((part) => part.isNotEmpty).join(' ');
+
     return DriverProfile(
-      id: _text(source, ['id', 'driver_id']),
-      name: _text(source, ['name', 'full_name', 'fio']),
-      phone: _text(source, ['phone', 'mobile_phone', 'mobile']),
+      id: jsonText(source, ['id', 'driver_id']),
+      name: name,
+      phone: jsonText(source, ['phone', 'mobile_phone', 'mobile']),
       carrierName: carrierMap == null
-          ? _text(source, [
+          ? jsonText(source, [
               'carrier_name',
               'carrier',
               'company',
               'company_name',
               'organization',
             ])
-          : _text(carrierMap, ['name', 'title', 'full_name']),
+          : jsonText(carrierMap, ['name', 'title', 'full_name']),
       vehicle: vehicleText,
-      licenseNumber: licenseMap == null
-          ? _text(source, [
-              'license_number',
-              'driver_license',
-              'license',
-              'vu_number',
-            ])
-          : _text(licenseMap, ['number', 'series_number', 'value']),
+      licenseNumber: licenseNumber,
       licenseCategories: licenseMap == null
-          ? _text(source, ['license_categories', 'categories', 'license_category'])
-          : _text(licenseMap, ['categories', 'category']),
+          ? jsonText(source, [
+              'license_categories',
+              'categories',
+              'license_category',
+            ])
+          : jsonText(licenseMap, ['categories', 'category']),
       licenseIssuedAt: licenseMap == null
-          ? _text(source, ['license_issued_at', 'license_date'])
-          : _text(licenseMap, ['issued_at', 'date']),
-      passportNumber: _text(source, ['passport_number', 'passport', 'passport_series_number']),
-      inn: _text(source, ['inn']),
-      comment: _text(source, ['comment', 'notes', 'note']),
+          ? jsonText(source, ['license_issued_at', 'license_date'])
+          : jsonText(licenseMap, ['issued_at', 'date']),
+      passportNumber: passport,
+      inn: jsonText(source, ['inn']),
+      comment: jsonText(source, ['comment', 'notes', 'note']),
     );
   }
 }

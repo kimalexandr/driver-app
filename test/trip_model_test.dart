@@ -51,4 +51,45 @@ void main() {
     expect(trip.copyWith(status: 'in_transit').destination, 'Казань');
     expect(trip.copyWith(status: 'delivered').isCompleted, isTrue);
   });
+
+  test('читает data-обёртку, города погрузки и точки маршрута', () {
+    final trip = Trip.fromJson({
+      'status': 'ok',
+      'data': {
+        'id': 4,
+        'number': 'B-4',
+        'status': 'assigned',
+        'loading_city': 'Тула',
+        'loading_address': {'full_address': 'Тула, ул. Советская, 1'},
+        'unloading_city': 'Орёл',
+        'points': [
+          {
+            'type': 'loading',
+            'lat': 54.19,
+            'lng': 37.61,
+          },
+          {
+            'type': 'unloading',
+            'address': 'Орёл, пр. Ленина, 10',
+            'lat': 52.97,
+            'lng': 36.06,
+          },
+        ],
+        'cargo': {'name': 'Металлопрокат', 'weight': 2400},
+        'goods': [
+          {'title': 'Лист 3мм', 'weight_kg': 2400, 'volume_m3': 3},
+        ],
+      },
+    });
+
+    expect(trip.from, 'Тула');
+    expect(trip.startAddress, 'Тула, ул. Советская, 1');
+    expect(trip.to, 'Орёл');
+    expect(trip.finishAddress, 'Орёл, пр. Ленина, 10');
+    expect(trip.cargo, 'Металлопрокат');
+    expect(trip.weightKg, 2400);
+    expect(trip.shipments.single.title, 'Лист 3мм');
+    expect(trip.startLat, 54.19);
+    expect(trip.finishLng, 36.06);
+  });
 }

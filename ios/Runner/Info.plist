@@ -51,6 +51,11 @@
 	<string>Камера нужна, чтобы сфотографировать ТТН</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Доступ к фото нужен, чтобы прикрепить снимок ТТН</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>yandexmaps</string>
+		<string>https</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

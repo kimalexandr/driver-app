@@ -52,4 +52,22 @@ void main() {
     expect(driver.passportNumber, '4510 123456');
     expect(driver.comment, 'Работает ночью');
   });
+
+  test('читает data-обёртку и ФИО из частей', () {
+    final driver = DriverProfile.fromJson({
+      'status': 'ok',
+      'data': {
+        'id': 9,
+        'last_name': 'Сидоров',
+        'first_name': 'Сидор',
+        'patronymic': 'Сидорович',
+        'mobile_phone': '79995554433',
+        'company': {'name': 'ООО Север'},
+      },
+    });
+
+    expect(driver.name, 'Сидоров Сидор Сидорович');
+    expect(driver.phone, '79995554433');
+    expect(driver.carrierName, 'ООО Север');
+  });
 }

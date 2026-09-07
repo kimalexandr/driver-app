@@ -1,11 +1,13 @@
 import 'package:url_launcher/url_launcher.dart';
 
-Future<void> openYandexRoute({
+Future<bool> openYandexRoute({
   String? from,
-  required String to,
+  String? to,
+  double? toLat,
+  double? toLng,
 }) async {
-  final destination = to.trim();
-  if (destination.isEmpty) return;
+  final destination = _destination(to: to, lat: toLat, lng: toLng);
+  if (destination.isEmpty) return false;
 
   final origin = from?.trim() ?? '';
   final rtext = origin.isEmpty
@@ -18,9 +20,19 @@ Future<void> openYandexRoute({
     'yandexmaps://maps.yandex.ru/?mode=routes&rtt=auto&rtext=$rtext',
   );
 
-  if (await canLaunchUrl(app)) {
-    await launchUrl(app, mode: LaunchMode.externalApplication);
-    return;
+  if (await _open(app)) return true;
+  return _open(web);
+}
+
+String _destination({String? to, double? lat, double? lng}) {
+  if (lat != null && lng != null) return '$lat,$lng';
+  return to?.trim() ?? '';
+}
+
+Future<bool> _open(Uri uri) async {
+  try {
+    return await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    return false;
   }
-  await launchUrl(web, mode: LaunchMode.externalApplication);
 }

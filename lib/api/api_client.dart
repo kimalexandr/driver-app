@@ -135,6 +135,7 @@ class ApiClient {
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      if (decoded is List) return {'data': decoded};
     } on FormatException {
       throw const ApiException('Сервер вернул некорректный ответ');
     }
