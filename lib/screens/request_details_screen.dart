@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:phone_auth_app/screens/loading_screen.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../api/api_exception.dart';
+import '../api/driver_api.dart';
+import '../models/trip.dart';
+import '../services/location_service.dart';
+import '../state/app_scope.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
-  final Map<String, dynamic> request;
-  final void Function(Map<String, dynamic>)? onArchive;
+  final Trip trip;
+  final DriverApi? api;
 
   const RequestDetailsScreen({
     super.key,
-    required this.request,
-    this.onArchive,
+    required this.trip,
+    this.api,
   });
 
   @override
@@ -16,148 +22,170 @@ class RequestDetailsScreen extends StatefulWidget {
 }
 
 class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
-  final bool _isLoading = false;
+  late Trip _trip;
+  bool _busy = false;
 
-  Future<void> _openYandexMaps(String address) async {
-    // Здесь будет логика открытия Яндекс Карт
+  DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
+
+  LocationService get _location =>
+      AppScope.maybeOf(context)?.locationService ?? LocationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _trip = widget.trip;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
   }
 
-  void _handleButtonPress() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            LoadingScreen(request: widget.request, onArchive: widget.onArchive),
-      ),
+  Future<void> _reload() async {
+    final api = _api;
+    if (api == null) return;
+    try {
+      final trip = await api.getTrip(_trip.id);
+      if (!mounted) return;
+      setState(() => _trip = trip);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
+  }
+
+  void _showOk(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _setStatus(String status) async {
+    if (_busy) return;
+    final api = _api;
+    if (api == null) return;
+    setState(() => _busy = true);
+    try {
+      final trip = await api.updateTripStatus(tripId: _trip.id, status: status);
+      if (!mounted) return;
+      setState(() => _trip = trip);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _sendLocation() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final point = await _location.current();
+      if (point == null) {
+        if (!mounted) return;
+        _showError('Не удалось получить геолокацию. Проверьте разрешение.');
+        return;
+      }
+      final api = _api;
+      if (api == null) return;
+      await api.sendLocation(tripId: _trip.id, lat: point.lat, lng: point.lng);
+      if (!mounted) return;
+      _showOk('Местоположение отправлено');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _attachPhoto() async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    setState(() => _busy = true);
+    try {
+      final api = _api;
+      if (api == null) return;
+      await api.uploadFile(tripId: _trip.id, filePath: file.path);
+      if (!mounted) return;
+      _showOk('Фото прикреплено');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('Заявка №${widget.request['number']}'),
-        ),
+        appBar: AppBar(title: Text('Рейс №${_trip.number}')),
         body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Секция погрузки
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: Colors.blue.shade50,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Погрузка',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(
-                      icon: Icons.location_on,
-                      title: 'Адрес',
-                      content: widget.request['loading_address'],
-                      onTap: () =>
-                          _openYandexMaps(widget.request['loading_address']),
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.calendar_today,
-                      title: 'Дата и время',
-                      content:
-                          '${widget.request['loading_date']} ${widget.request['loading_time']}',
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.business,
-                      title: 'Компания',
-                      content: widget.request['loading_company'],
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.scale,
-                      title: 'Масса',
-                      content: '${widget.request['loading_weight']} кг',
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.calculate,
-                      title: 'Объем',
-                      content: '${widget.request['loading_volume']} м³',
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.comment,
-                      title: 'Комментарий',
-                      content: widget.request['loading_comment'],
-                    ),
-                  ],
+              _row('Статус', _trip.statusLabel),
+              _row('Откуда', _trip.from),
+              _row('Куда', _trip.to),
+              _row('Дата', _trip.dateStart),
+              if (_trip.vehicle.isNotEmpty) _row('ТС', _trip.vehicle),
+              if (_trip.startAddress.isNotEmpty)
+                _row('Адрес погрузки', _trip.startAddress),
+              if (_trip.finishAddress.isNotEmpty)
+                _row('Адрес выгрузки', _trip.finishAddress),
+              if (_trip.shipments.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Грузы',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
-              // Секция разгрузки
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: Colors.green.shade50,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Разгрузка',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(
-                      icon: Icons.location_on,
-                      title: 'Адрес',
-                      content: widget.request['unloading_address'],
-                      onTap: () =>
-                          _openYandexMaps(widget.request['unloading_address']),
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.calendar_today,
-                      title: 'Дата и время',
-                      content:
-                          '${widget.request['unloading_date']} ${widget.request['unloading_time']}',
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.business,
-                      title: 'Компания получатель',
-                      content: widget.request['unloading_company'],
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.scale,
-                      title: 'Масса',
-                      content: '${widget.request['unloading_weight']} кг',
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.calculate,
-                      title: 'Объем',
-                      content: '${widget.request['unloading_volume']} м³',
-                    ),
-                    _buildInfoRow(
-                      icon: Icons.comment,
-                      title: 'Комментарий',
-                      content: widget.request['unloading_comment'],
-                    ),
-                  ],
-                ),
-              ),
-              // Кнопка "В путь на погрузку" или "Прибыл на погрузку"
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _handleButtonPress,
-                  icon: const Icon(Icons.directions_car),
-                  label: Text(
-                      _isLoading ? 'Прибыл на погрузку' : 'В путь на погрузку'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                const SizedBox(height: 8),
+                ..._trip.shipments.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(item.title),
                   ),
                 ),
+              ],
+              const SizedBox(height: 24),
+              if (_trip.canStart)
+                ElevatedButton(
+                  onPressed: _busy ? null : () => _setStatus('in_transit'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  child: const Text('В пути'),
+                ),
+              if (_trip.canDeliver) ...[
+                ElevatedButton(
+                  onPressed: _busy ? null : () => _setStatus('delivered'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  child: const Text('Доставлено'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: _busy ? null : _sendLocation,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  child: const Text('Отправить местоположение'),
+                ),
+              ],
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _busy ? null : _attachPhoto,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+                child: const Text('Прикрепить фото'),
               ),
             ],
           ),
@@ -166,46 +194,17 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String title,
-    required String content,
-    VoidCallback? onTap,
-  }) {
+  Widget _row(String title, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 24, color: Colors.blue),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: onTap,
-                  child: Text(
-                    content,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: onTap != null ? Colors.blue : Colors.black,
-                      decoration:
-                          onTap != null ? TextDecoration.underline : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ],
       ),

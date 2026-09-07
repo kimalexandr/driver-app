@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+
+import '../api/api_exception.dart';
+import '../api/driver_api.dart';
+import '../models/trip.dart';
+import '../state/app_scope.dart';
 import 'driver_profile_screen.dart';
 import 'request_details_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
-  final String companyName;
+  final String? companyName;
+  final DriverApi? api;
 
   const RequestsScreen({
     super.key,
-    required this.companyName,
+    this.companyName,
+    this.api,
   });
 
   @override
@@ -15,197 +22,154 @@ class RequestsScreen extends StatefulWidget {
 }
 
 class _RequestsScreenState extends State<RequestsScreen> {
-  List<Map<String, dynamic>> activeRequests = [
-    {
-      'number': '001',
-      'loading_city': 'Москва',
-      'loading_date': '15.03.2024',
-      'loading_time': '10:00',
-      'unloading_city': 'Санкт-Петербург',
-      'unloading_date': '16.03.2024',
-      'unloading_time': '14:00',
-      'loading_address': 'г. Москва, ул. Ленина, д. 1',
-      'loading_company': 'ООО "Грузовик"',
-      'loading_weight': 1000,
-      'loading_volume': 5,
-      'loading_comment': 'Вход со стороны двора',
-      'loading_gates': 'Ворота №1',
-      'loading_time_from': '09:00',
-      'loading_time_to': '11:00',
-      'loading_dispatcher': 'Иванов Иван Иванович',
-      'loading_dispatcher_phone': '+7 (999) 123-45-67',
-      'unloading_address': 'г. Санкт-Петербург, пр. Невский, д. 1',
-      'unloading_company': 'ООО "Получатель"',
-      'unloading_weight': 1000,
-      'unloading_volume': 5,
-      'unloading_comment': 'Разгрузка на складе №2',
-    },
-    {
-      'number': '002',
-      'loading_city': 'Казань',
-      'loading_date': '17.03.2024',
-      'loading_time': '09:00',
-      'unloading_city': 'Екатеринбург',
-      'unloading_date': '18.03.2024',
-      'unloading_time': '15:00',
-      'loading_address': 'г. Казань, ул. Баумана, д. 1',
-      'loading_company': 'ООО "Грузовик"',
-      'loading_weight': 2000,
-      'loading_volume': 8,
-      'loading_comment': 'Погрузка на складе №1',
-      'loading_gates': 'Ворота №2',
-      'loading_time_from': '08:00',
-      'loading_time_to': '10:00',
-      'loading_dispatcher': 'Петров Петр Петрович',
-      'loading_dispatcher_phone': '+7 (999) 765-43-21',
-      'unloading_address': 'г. Екатеринбург, ул. Ленина, д. 1',
-      'unloading_company': 'ООО "Получатель"',
-      'unloading_weight': 2000,
-      'unloading_volume': 8,
-      'unloading_comment': 'Вход через главные ворота',
-    },
-  ];
-  List<Map<String, dynamic>> archivedRequests = [];
+  List<Trip> _trips = [];
+  bool _loading = true;
+  String? _error;
 
-  int _tabIndex = 0;
+  DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
-  void archiveRequest(Map<String, dynamic> request) {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
     setState(() {
-      activeRequests.removeWhere((r) => r['number'] == request['number']);
-      archivedRequests.add({...request, 'status': 'Завершена'});
+      _loading = true;
+      _error = null;
     });
+    try {
+      final api = _api;
+      if (api == null) {
+        setState(() {
+          _error = 'Нет подключения к API';
+          _loading = false;
+        });
+        return;
+      }
+      final trips = await api.listTrips();
+      if (!mounted) return;
+      setState(() {
+        _trips = trips;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error is ApiException ? error.message : 'Не удалось загрузить рейсы';
+        _loading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      initialIndex: _tabIndex,
-      child: SafeArea(
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(widget.companyName),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.person),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DriverProfileScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-            bottom: TabBar(
-              onTap: (index) => setState(() => _tabIndex = index),
-              tabs: const [
-                Tab(text: 'Активные'),
-                Tab(text: 'Архивные'),
-              ],
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.companyName ?? 'Рейсы'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DriverProfileScreen(),
+                  ),
+                );
+              },
             ),
-          ),
-          body: TabBarView(
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _buildRequestsList(activeRequests, false),
-              _buildRequestsList(archivedRequests, true),
-            ],
-          ),
+          ],
         ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(_error!, textAlign: TextAlign.center),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _load,
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: _trips.isEmpty
+                        ? ListView(
+                            children: const [
+                              SizedBox(height: 160),
+                              Center(child: Text('Нет назначенных рейсов')),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _trips.length,
+                            itemBuilder: (context, index) {
+                              final trip = _trips[index];
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: InkWell(
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            RequestDetailsScreen(
+                                          trip: trip,
+                                          api: widget.api,
+                                        ),
+                                      ),
+                                    );
+                                    await _load();
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Рейс №${trip.number}',
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '${trip.from} → ${trip.to}',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          trip.dateStart,
+                                          style: const TextStyle(color: Colors.grey),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          trip.statusLabel,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
       ),
-    );
-  }
-
-  Widget _buildRequestsList(
-      List<Map<String, dynamic>> requests, bool isArchive) {
-    if (requests.isEmpty) {
-      return const Center(child: Text('Нет заявок'));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: requests.length,
-      itemBuilder: (context, index) {
-        final request = requests[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: InkWell(
-            onTap: isArchive
-                ? null
-                : () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RequestDetailsScreen(
-                            request: request, onArchive: archiveRequest),
-                      ),
-                    );
-                    if (result == 'archived') setState(() {});
-                  },
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Заявка №${request['number']}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isArchive)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text('Статус: ${request['status'] ?? 'Завершена'}',
-                          style: const TextStyle(color: Colors.green)),
-                    ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          request['loading_city'],
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward, color: Colors.blue),
-                      Expanded(
-                        child: Text(
-                          request['unloading_city'],
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.end,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${request['loading_date']} ${request['loading_time']}',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                      Text(
-                        '${request['unloading_date']} ${request['unloading_time']}',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

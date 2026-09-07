@@ -18,19 +18,25 @@ class IntroScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Для начала работы необходимо ввести номер телефона',
+                'Войдите по номеру телефона или по коду из SMS перевозчика',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/phone');
-                },
+                onPressed: () => Navigator.pushNamed(context, '/phone'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                 ),
-                child: const Text('Продолжить'),
+                child: const Text('Войти по телефону'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => Navigator.pushNamed(context, '/invite'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text('У меня есть код из SMS'),
               ),
             ],
           ),
