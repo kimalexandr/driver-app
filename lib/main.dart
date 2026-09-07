@@ -42,22 +42,34 @@ class _DriverAppState extends State<DriverApp> {
     if (!mounted) return;
     _wasLoggedIn = _auth.isLoggedIn;
     setState(() => _ready = true);
+    _syncTracker();
   }
 
   void _onAuth() {
     if (!_ready || !mounted) return;
     if (_wasLoggedIn && !_auth.isLoggedIn) {
+      widget.dependencies.locationTracker.stop();
       _navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/phone',
         (route) => false,
       );
     }
     _wasLoggedIn = _auth.isLoggedIn;
+    _syncTracker();
+  }
+
+  void _syncTracker() {
+    if (_auth.isLoggedIn) {
+      widget.dependencies.locationTracker.start();
+    } else {
+      widget.dependencies.locationTracker.stop();
+    }
   }
 
   @override
   void dispose() {
     _auth.removeListener(_onAuth);
+    widget.dependencies.locationTracker.stop();
     super.dispose();
   }
 
@@ -67,6 +79,7 @@ class _DriverAppState extends State<DriverApp> {
       api: widget.dependencies.api,
       tokenStore: widget.dependencies.tokenStore,
       locationService: widget.dependencies.locationService,
+      locationTracker: widget.dependencies.locationTracker,
       auth: _auth,
       child: MaterialApp(
         navigatorKey: _navigatorKey,

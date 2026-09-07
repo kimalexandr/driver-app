@@ -18,10 +18,13 @@ class MockDriverApi implements DriverApi {
     name: 'Иванов Иван Иванович',
     phone: '79991234567',
     carrierName: 'ООО Перевозчик',
-    vehicle: 'КАМАЗ · А123БВ777',
-    licenseNumber: '99 00 123456',
-    licenseCategories: 'C, CE',
-    licenseIssuedAt: '2019-04-12',
+    license: DriverLicense(number: '1234567890', issueDate: '12.05.2020'),
+    auto: DriverAuto(
+      id: '10',
+      stateNumber: 'А123ВС77',
+      brand: 'Volvo',
+      model: 'FH',
+    ),
   );
 
   final List<Trip> _trips = [
@@ -132,7 +135,13 @@ class MockDriverApi implements DriverApi {
     if (resolved != mockCode && code != mockCode) {
       throw const ApiException('Неверный код', statusCode: 422);
     }
-    _driver = DriverProfile(id: _driver.id, name: _driver.name, phone: phone);
+    _driver = DriverProfile(
+      id: _driver.id,
+      name: _driver.name,
+      phone: phone,
+      license: _driver.license,
+      auto: _driver.auto,
+    );
     await tokenStore?.saveAccessToken('mock-access-token');
     return AuthSession(
       accessToken: 'mock-access-token',
@@ -159,6 +168,7 @@ class MockDriverApi implements DriverApi {
   Future<Trip> updateTripStatus({
     required String tripId,
     required String status,
+    String? comment,
   }) async {
     if (status != 'in_transit' && status != 'delivered') {
       throw const ApiException('Недопустимый статус', statusCode: 422);

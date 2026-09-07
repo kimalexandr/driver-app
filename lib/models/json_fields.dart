@@ -65,12 +65,14 @@ num? jsonNumber(Map<String, dynamic> json, List<String> keys) {
     }
     if (value is Map) {
       final nested = jsonNumber(Map<String, dynamic>.from(value), const [
+        'weight_kg',
         'value',
         'amount',
         'kg',
         'm3',
         'weight',
         'volume',
+        'units',
       ]);
       if (nested != null) return nested;
     }

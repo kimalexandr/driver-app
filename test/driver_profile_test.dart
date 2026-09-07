@@ -70,4 +70,29 @@ void main() {
     expect(driver.phone, '79995554433');
     expect(driver.carrierName, 'ООО Север');
   });
+
+  test('читает поля DriverAuthService::profile', () {
+    final driver = DriverProfile.fromJson({
+      'id': 12,
+      'full_name': 'Иванов Иван Иванович',
+      'name': 'Иванов Иван Иванович',
+      'last_name': 'Иванов',
+      'first_name': 'Иван',
+      'patronymic': 'Иванович',
+      'phone': '79991234567',
+      'phone_secondary': '79990001122',
+      'email': 'driver@7rights.ru',
+      'license_number': '99 00 123456',
+      'company_name': 'ООО Перевозчик',
+      'team_id': 5,
+    });
+
+    expect(driver.id, '12');
+    expect(driver.name, 'Иванов Иван Иванович');
+    expect(driver.phone, '79991234567');
+    expect(driver.phoneSecondary, '79990001122');
+    expect(driver.email, 'driver@7rights.ru');
+    expect(driver.licenseNumber, '99 00 123456');
+    expect(driver.carrierName, 'ООО Перевозчик');
+  });
 }

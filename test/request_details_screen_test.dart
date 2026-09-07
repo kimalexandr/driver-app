@@ -45,7 +45,7 @@ void main() {
     expect(find.text('г. Москва, ул. Ленина, д. 1'), findsOneWidget);
     expect(find.text('г. Санкт-Петербург, пр. Невский, д. 1'), findsOneWidget);
     expect(find.text('Груз 1'), findsOneWidget);
-    expect(find.text('Комментарий заявки'), findsOneWidget);
+    expect(find.text('Комментарий рейса'), findsOneWidget);
     expect(find.text('Вход со стороны двора, звонить за час'), findsOneWidget);
     expect(find.text('Паллеты с запчастями'), findsOneWidget);
     expect(find.text('1000 кг'), findsWidgets);

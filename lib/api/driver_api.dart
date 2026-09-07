@@ -22,6 +22,7 @@ abstract class DriverApi {
   Future<Trip> updateTripStatus({
     required String tripId,
     required String status,
+    String? comment,
   });
 
   Future<void> sendLocation({
@@ -71,9 +72,9 @@ class HttpDriverApi implements DriverApi {
     } on FormatException {
       throw const ApiException('Сервер вернул некорректный ответ');
     }
-    final driver = session.driver.phone.isEmpty
-        ? DriverProfile(id: session.driver.id, name: session.driver.name, phone: phone)
-        : session.driver;
+    final driver = session.driver.orFallback(
+      DriverProfile(id: session.driver.id, name: session.driver.name, phone: phone),
+    );
     await client.tokenStore.saveAccessToken(session.accessToken);
     return AuthSession(
       accessToken: session.accessToken,
@@ -115,10 +116,14 @@ class HttpDriverApi implements DriverApi {
   Future<Trip> updateTripStatus({
     required String tripId,
     required String status,
+    String? comment,
   }) async {
     final json = await client.patch(
       '/trips/$tripId/status',
-      body: {'status': status},
+      body: {
+        'status': status,
+        if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+      },
     );
     final root = unwrapJson(json);
     final trip = root['trip'];

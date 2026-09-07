@@ -235,7 +235,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    trip.dateStart,
+                                    trip.dateRange,
                                     style: const TextStyle(color: AppColors.muted),
                                   ),
                                 ),
@@ -246,6 +246,13 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                 ),
                               ],
                             ),
+                            if (trip.vehicle.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                trip.vehicle,
+                                style: const TextStyle(color: AppColors.muted),
+                              ),
+                            ],
                             if (trip.cargoLabel.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(

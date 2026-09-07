@@ -92,4 +92,85 @@ void main() {
     expect(trip.startLat, 54.19);
     expect(trip.finishLng, 36.06);
   });
+
+  test('читает карточку рейса DriverTripController', () {
+    final trip = Trip.fromJson({
+      'id': 100,
+      'number': 'SAP-100',
+      'status': 'assigned',
+      'status_label': 'Назначен',
+      'from': 'Москва',
+      'to': 'Казань',
+      'start_address': 'Москва, ул. Ленина, 1',
+      'finish_address': 'Казань, пр. Победы, 10',
+      'start_city': 'Москва',
+      'finish_city': 'Казань',
+      'start_company': 'ООО Склад',
+      'finish_company': 'ООО Магазин',
+      'start_comment': 'Ворота 4',
+      'finish_comment': 'Рампа 2',
+      'date_start': '2026-09-08T10:00:00',
+      'date_end': '2026-09-09T18:00:00',
+      'cargo': 'Запчасти, Паллеты',
+      'weight_kg': 1200,
+      'comment': 'Звонить за час',
+      'vehicle': 'А123БВ777',
+      'vehicle_brand': 'КАМАЗ',
+      'vehicle_model': '65117',
+      'shipments': [
+        {
+          'id': 1,
+          'status': 'ready',
+          'date_start': '2026-09-08T10:00:00',
+          'date_end': '2026-09-08T12:00:00',
+          'from': 'Москва',
+          'to': 'Казань',
+          'from_address': 'Москва, ул. Ленина, 1',
+          'to_address': 'Казань, пр. Победы, 10',
+          'from_lat': 55.75,
+          'from_lng': 37.62,
+          'to_lat': 55.79,
+          'to_lng': 49.12,
+          'cargo_name': 'Запчасти',
+          'cargo': {'weight_kg': 800, 'units': 12, 'measure_unit': 'пал'},
+          'consignee': 'ООО Магазин',
+          'comment': 'Хрупкое',
+        },
+      ],
+      'stops': [
+        {
+          'type': 'load',
+          'address': 'Москва, ул. Ленина, 1',
+          'lat': 55.75,
+          'lng': 37.62,
+        },
+        {
+          'type': 'unload',
+          'address': 'Казань, пр. Победы, 10',
+          'lat': 55.79,
+          'lng': 49.12,
+        },
+      ],
+    });
+
+    expect(trip.number, 'SAP-100');
+    expect(trip.from, 'Москва');
+    expect(trip.startAddress, 'Москва, ул. Ленина, 1');
+    expect(trip.startCompany, 'ООО Склад');
+    expect(trip.finishCompany, 'ООО Магазин');
+    expect(trip.startComment, 'Ворота 4');
+    expect(trip.finishComment, 'Рампа 2');
+    expect(trip.cargo, 'Запчасти, Паллеты');
+    expect(trip.weightKg, 1200);
+    expect(trip.vehicle, 'КАМАЗ 65117 · А123БВ777');
+    expect(trip.dateRange, contains('08.09.2026'));
+    expect(trip.shipments.single.title, 'Запчасти');
+    expect(trip.shipments.single.weightKg, 800);
+    expect(trip.shipments.single.units, 12);
+    expect(trip.shipments.single.measureUnit, 'пал');
+    expect(trip.shipments.single.consignee, 'ООО Магазин');
+    expect(trip.startLat, 55.75);
+    expect(trip.finishLng, 49.12);
+    expect(formatUnits(12, 'пал'), '12 пал');
+  });
 }

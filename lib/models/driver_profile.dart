@@ -1,59 +1,144 @@
 import 'json_fields.dart';
 
+class DriverLicense {
+  final String number;
+  final String issueDate;
+  final String issuedBy;
+  final String issueCity;
+
+  const DriverLicense({
+    this.number = '',
+    this.issueDate = '',
+    this.issuedBy = '',
+    this.issueCity = '',
+  });
+
+  bool get hasContent =>
+      number.isNotEmpty ||
+      issueDate.isNotEmpty ||
+      issuedBy.isNotEmpty ||
+      issueCity.isNotEmpty;
+
+  factory DriverLicense.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const DriverLicense();
+    return DriverLicense(
+      number: jsonText(json, ['number']),
+      issueDate: formatDay(json['issue_date'] ?? json['issued_at'] ?? json['date']),
+      issuedBy: jsonText(json, ['issued_by', 'issuer']),
+      issueCity: jsonText(json, ['issue_city', 'city']),
+    );
+  }
+}
+
+class DriverPassport {
+  final String series;
+  final String number;
+  final String issueDate;
+
+  const DriverPassport({
+    this.series = '',
+    this.number = '',
+    this.issueDate = '',
+  });
+
+  bool get hasContent =>
+      series.isNotEmpty || number.isNotEmpty || issueDate.isNotEmpty;
+
+  String get seriesNumber =>
+      [series, number].where((part) => part.isNotEmpty).join(' ');
+
+  factory DriverPassport.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const DriverPassport();
+    return DriverPassport(
+      series: jsonText(json, ['series']),
+      number: jsonText(json, ['number']),
+      issueDate: formatDay(json['issue_date'] ?? json['date']),
+    );
+  }
+}
+
+class DriverAuto {
+  final String id;
+  final String stateNumber;
+  final String brand;
+  final String model;
+  final String vin;
+  final String year;
+  final String color;
+  final String stsNumber;
+  final String carCategory;
+  final String bodyType;
+
+  const DriverAuto({
+    this.id = '',
+    this.stateNumber = '',
+    this.brand = '',
+    this.model = '',
+    this.vin = '',
+    this.year = '',
+    this.color = '',
+    this.stsNumber = '',
+    this.carCategory = '',
+    this.bodyType = '',
+  });
+
+  bool get hasContent =>
+      stateNumber.isNotEmpty ||
+      brand.isNotEmpty ||
+      model.isNotEmpty ||
+      vin.isNotEmpty ||
+      year.isNotEmpty ||
+      color.isNotEmpty ||
+      stsNumber.isNotEmpty ||
+      carCategory.isNotEmpty ||
+      bodyType.isNotEmpty;
+
+  String get title {
+    final name = [brand, model].where((part) => part.isNotEmpty).join(' ');
+    return [name, stateNumber].where((part) => part.isNotEmpty).join(' · ');
+  }
+
+  factory DriverAuto.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const DriverAuto();
+    return DriverAuto(
+      id: jsonText(json, ['id']),
+      stateNumber: jsonText(json, ['state_number', 'number', 'plate']),
+      brand: jsonText(json, ['brand']),
+      model: jsonText(json, ['model']),
+      vin: jsonText(json, ['vin']),
+      year: jsonText(json, ['year']),
+      color: jsonText(json, ['color']),
+      stsNumber: jsonText(json, ['sts_number', 'sts']),
+      carCategory: jsonText(json, ['car_category', 'category']),
+      bodyType: jsonText(json, ['body_type']),
+    );
+  }
+}
+
 class DriverProfile {
   final String id;
   final String name;
   final String phone;
+  final String phoneSecondary;
+  final String email;
   final String carrierName;
-  final String vehicle;
-  final String licenseNumber;
-  final String licenseCategories;
-  final String licenseIssuedAt;
-  final String passportNumber;
-  final String inn;
-  final String comment;
+  final DriverLicense license;
+  final DriverPassport passport;
+  final DriverAuto? auto;
 
   const DriverProfile({
     required this.id,
     required this.name,
     this.phone = '',
+    this.phoneSecondary = '',
+    this.email = '',
     this.carrierName = '',
-    this.vehicle = '',
-    this.licenseNumber = '',
-    this.licenseCategories = '',
-    this.licenseIssuedAt = '',
-    this.passportNumber = '',
-    this.inn = '',
-    this.comment = '',
+    this.license = const DriverLicense(),
+    this.passport = const DriverPassport(),
+    this.auto,
   });
 
-  DriverProfile copyWith({
-    String? id,
-    String? name,
-    String? phone,
-    String? carrierName,
-    String? vehicle,
-    String? licenseNumber,
-    String? licenseCategories,
-    String? licenseIssuedAt,
-    String? passportNumber,
-    String? inn,
-    String? comment,
-  }) {
-    return DriverProfile(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      phone: phone ?? this.phone,
-      carrierName: carrierName ?? this.carrierName,
-      vehicle: vehicle ?? this.vehicle,
-      licenseNumber: licenseNumber ?? this.licenseNumber,
-      licenseCategories: licenseCategories ?? this.licenseCategories,
-      licenseIssuedAt: licenseIssuedAt ?? this.licenseIssuedAt,
-      passportNumber: passportNumber ?? this.passportNumber,
-      inn: inn ?? this.inn,
-      comment: comment ?? this.comment,
-    );
-  }
+  String get vehicle => auto?.title ?? '';
 
   DriverProfile orFallback(DriverProfile? other) {
     if (other == null) return this;
@@ -63,96 +148,56 @@ class DriverProfile {
       id: pick(id, other.id),
       name: pick(name, other.name),
       phone: pick(phone, other.phone),
+      phoneSecondary: pick(phoneSecondary, other.phoneSecondary),
+      email: pick(email, other.email),
       carrierName: pick(carrierName, other.carrierName),
-      vehicle: pick(vehicle, other.vehicle),
-      licenseNumber: pick(licenseNumber, other.licenseNumber),
-      licenseCategories: pick(licenseCategories, other.licenseCategories),
-      licenseIssuedAt: pick(licenseIssuedAt, other.licenseIssuedAt),
-      passportNumber: pick(passportNumber, other.passportNumber),
-      inn: pick(inn, other.inn),
-      comment: pick(comment, other.comment),
+      license: license.hasContent ? license : other.license,
+      passport: passport.hasContent ? passport : other.passport,
+      auto: (auto?.hasContent ?? false) ? auto : other.auto,
     );
   }
 
   factory DriverProfile.fromJson(Map<String, dynamic> json) {
     final root = unwrapJson(json);
-    final nested = jsonMap(root, ['driver', 'user', 'profile']);
-    final source = nested ?? root;
-    final vehicleMap = jsonMap(source, ['vehicle', 'car', 'truck']);
-    final licenseMap = jsonMap(source, ['license', 'driver_license']);
-    final carrierMap = jsonMap(source, ['carrier', 'company', 'organization']);
-    final vehicleText = vehicleMap == null
-        ? jsonText(source, [
-            'vehicle',
-            'vehicle_number',
-            'car_number',
-            'truck_number',
-          ])
-        : [
-            [
-              jsonText(vehicleMap, ['brand', 'name']),
-              jsonText(vehicleMap, ['model']),
-            ].where((part) => part.isNotEmpty).join(' '),
-            jsonText(vehicleMap, ['number', 'reg_number', 'plate']),
-          ].where((part) => part.isNotEmpty).join(' · ');
-
-    var name = jsonText(source, ['name', 'full_name', 'fio']);
+    final source = jsonMap(root, ['driver', 'user', 'profile']) ?? root;
+    final auto = jsonMap(root, ['auto']) ?? jsonMap(source, ['auto']);
+    var name = jsonText(source, ['full_name', 'name', 'fio']);
     if (name.isEmpty) {
       name = [
-        jsonText(source, ['last_name', 'surname', 'lastname']),
-        jsonText(source, ['first_name', 'firstname']),
-        jsonText(source, ['middle_name', 'patronymic']),
+        jsonText(source, ['last_name', 'second_name', 'surname']),
+        jsonText(source, ['first_name']),
+        jsonText(source, ['patronymic', 'middle_name']),
       ].where((part) => part.isNotEmpty).join(' ');
     }
-
-    final licenseNumber = licenseMap == null
-        ? [
-            jsonText(source, ['license_series', 'vu_series']),
-            jsonText(source, [
-              'license_number',
-              'driver_license',
-              'license',
-              'vu_number',
-            ]),
-          ].where((part) => part.isNotEmpty).join(' ')
-        : [
-            jsonText(licenseMap, ['series']),
-            jsonText(licenseMap, ['number', 'series_number', 'value']),
-          ].where((part) => part.isNotEmpty).join(' ');
-
-    final passport = [
-      jsonText(source, ['passport_series']),
-      jsonText(source, ['passport_number', 'passport', 'passport_series_number']),
-    ].where((part) => part.isNotEmpty).join(' ');
 
     return DriverProfile(
       id: jsonText(source, ['id', 'driver_id']),
       name: name,
       phone: jsonText(source, ['phone', 'mobile_phone', 'mobile']),
-      carrierName: carrierMap == null
-          ? jsonText(source, [
-              'carrier_name',
-              'carrier',
-              'company',
-              'company_name',
-              'organization',
-            ])
-          : jsonText(carrierMap, ['name', 'title', 'full_name']),
-      vehicle: vehicleText,
-      licenseNumber: licenseNumber,
-      licenseCategories: licenseMap == null
-          ? jsonText(source, [
-              'license_categories',
-              'categories',
-              'license_category',
-            ])
-          : jsonText(licenseMap, ['categories', 'category']),
-      licenseIssuedAt: licenseMap == null
-          ? jsonText(source, ['license_issued_at', 'license_date'])
-          : jsonText(licenseMap, ['issued_at', 'date']),
-      passportNumber: passport,
-      inn: jsonText(source, ['inn']),
-      comment: jsonText(source, ['comment', 'notes', 'note']),
+      phoneSecondary: jsonText(source, [
+        'phone_secondary',
+        'secondary_mobile_phone',
+      ]),
+      email: jsonText(source, ['email']),
+      carrierName: jsonText(source, [
+        'company_name',
+        'carrier_name',
+        'company',
+      ]),
+      license: DriverLicense.fromJson(jsonMap(source, ['license'])),
+      passport: DriverPassport.fromJson(jsonMap(source, ['passport'])),
+      auto: auto == null ? null : DriverAuto.fromJson(auto),
     );
   }
+}
+
+String formatDay(Object? raw) {
+  if (raw == null) return '';
+  final value = raw.toString().trim();
+  if (value.isEmpty || value == 'null') return '';
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) return value;
+  final dd = parsed.day.toString().padLeft(2, '0');
+  final mm = parsed.month.toString().padLeft(2, '0');
+  return '$dd.$mm.${parsed.year}';
 }

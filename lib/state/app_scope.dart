@@ -4,18 +4,21 @@ import '../api/api_client.dart';
 import '../api/driver_api.dart';
 import '../api/token_store.dart';
 import '../services/location_service.dart';
+import '../services/trip_location_tracker.dart';
 import 'auth_controller.dart';
 
 class AppScope extends InheritedNotifier<AuthController> {
   final DriverApi api;
   final TokenStore tokenStore;
   final LocationService locationService;
+  final TripLocationTracker locationTracker;
 
   const AppScope({
     super.key,
     required this.api,
     required this.tokenStore,
     required this.locationService,
+    required this.locationTracker,
     required AuthController auth,
     required super.child,
   }) : super(notifier: auth);
@@ -39,6 +42,7 @@ class AppDependencies {
   final DriverApi api;
   final AuthController auth;
   final LocationService locationService;
+  final TripLocationTracker locationTracker;
 
   AppDependencies._({
     required this.tokenStore,
@@ -46,6 +50,7 @@ class AppDependencies {
     required this.api,
     required this.auth,
     required this.locationService,
+    required this.locationTracker,
   });
 
   factory AppDependencies({
@@ -58,13 +63,19 @@ class AppDependencies {
     final resolvedClient = client ?? ApiClient(tokenStore: store);
     final resolvedApi = api ?? HttpDriverApi(resolvedClient);
     final auth = AuthController(api: resolvedApi, tokenStore: store);
-    resolvedClient.onUnauthorized = auth.onUnauthorized;
+    final resolvedLocation = locationService ?? LocationService();
+    final tracker = TripLocationTracker(api: resolvedApi, location: resolvedLocation);
+    resolvedClient.onUnauthorized = () async {
+      tracker.stop();
+      await auth.onUnauthorized();
+    };
     return AppDependencies._(
       tokenStore: store,
       client: resolvedClient,
       api: resolvedApi,
       auth: auth,
-      locationService: locationService ?? LocationService(),
+      locationService: resolvedLocation,
+      locationTracker: tracker,
     );
   }
 }
