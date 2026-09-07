@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_exception.dart';
 import '../api/driver_api.dart';
@@ -150,23 +151,65 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                   ),
                   const SizedBox(height: 18),
                   _routeCard(),
+                  if (_trip.comment.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _card(
+                      title: 'Комментарий заявки',
+                      child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
+                    ),
+                  ],
+                  if (_trip.cargoLabel.isNotEmpty ||
+                      _trip.totalWeightKg != null ||
+                      _trip.totalVolumeM3 != null) ...[
+                    const SizedBox(height: 16),
+                    _card(
+                      title: 'Товар',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_trip.cargoLabel.isNotEmpty)
+                            Text(
+                              _trip.cargoLabel,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (_trip.totalWeightKg != null)
+                                _metric(Icons.scale, formatKg(_trip.totalWeightKg)),
+                              if (_trip.totalVolumeM3 != null)
+                                _metric(Icons.inventory_2_outlined, formatM3(_trip.totalVolumeM3)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_trip.sender.hasContent) ...[
+                    const SizedBox(height: 16),
+                    _partyCard('Отправитель', _trip.sender),
+                  ],
+                  if (_trip.recipient.hasContent) ...[
+                    const SizedBox(height: 16),
+                    _partyCard('Получатель', _trip.recipient),
+                  ],
                   if (_trip.shipments.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     _card(
                       title: 'Грузы',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: _trip.shipments
-                            .map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text(
-                                  item.title,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                        children: [
+                          for (var i = 0; i < _trip.shipments.length; i++) ...[
+                            if (i > 0) const Divider(height: 20),
+                            _shipmentRow(_trip.shipments[i]),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -281,6 +324,101 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _metric(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.sand,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.navy),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _partyCard(String title, Party party) {
+    return _card(
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (party.company.isNotEmpty)
+            _infoLine('Компания', party.company),
+          if (party.name.isNotEmpty) _infoLine('Контакт', party.name),
+          if (party.phone.isNotEmpty)
+            _infoLine('Телефон', party.phone, onTap: () => _call(party.phone)),
+          if (party.address.isNotEmpty) _infoLine('Адрес', party.address),
+          if (party.comment.isNotEmpty) _infoLine('Комментарий', party.comment),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoLine(String label, String value, {VoidCallback? onTap}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+          const SizedBox(height: 2),
+          GestureDetector(
+            onTap: onTap,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: onTap != null ? AppColors.ink : AppColors.navy,
+                decoration: onTap != null ? TextDecoration.underline : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shipmentRow(Shipment item) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          item.title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (item.weightKg != null) _metric(Icons.scale, formatKg(item.weightKg)),
+            if (item.volumeM3 != null)
+              _metric(Icons.inventory_2_outlined, formatM3(item.volumeM3)),
+          ],
+        ),
+        if (item.comment.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(item.comment, style: const TextStyle(color: AppColors.muted)),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _call(String phone) async {
+    final digits = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri.parse('tel:$digits');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   Widget _actions() {

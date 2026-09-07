@@ -16,7 +16,21 @@ void main() {
       vehicle: 'А001АА77',
       startAddress: 'г. Москва, ул. Ленина, д. 1',
       finishAddress: 'г. Санкт-Петербург, пр. Невский, д. 1',
-      shipments: [Shipment(id: 's1', title: 'Груз 1')],
+      comment: 'Вход со стороны двора, звонить за час',
+      cargo: 'Паллеты с запчастями',
+      weightKg: 1000,
+      volumeM3: 5,
+      sender: Party(
+        name: 'Иванов Иван Иванович',
+        company: 'ООО «Грузовик»',
+        phone: '+7 (999) 123-45-67',
+      ),
+      recipient: Party(
+        name: 'Петров Пётр Петрович',
+        company: 'ООО «Получатель»',
+        phone: '+7 (999) 765-43-21',
+      ),
+      shipments: [Shipment(id: 's1', title: 'Груз 1', weightKg: 1000, volumeM3: 5)],
     );
 
     await tester.pumpWidget(const MaterialApp(
@@ -31,6 +45,15 @@ void main() {
     expect(find.text('г. Москва, ул. Ленина, д. 1'), findsOneWidget);
     expect(find.text('г. Санкт-Петербург, пр. Невский, д. 1'), findsOneWidget);
     expect(find.text('Груз 1'), findsOneWidget);
+    expect(find.text('Комментарий заявки'), findsOneWidget);
+    expect(find.text('Вход со стороны двора, звонить за час'), findsOneWidget);
+    expect(find.text('Паллеты с запчастями'), findsOneWidget);
+    expect(find.text('1000 кг'), findsWidgets);
+    expect(find.text('5 м³'), findsWidgets);
+    expect(find.text('Отправитель'), findsOneWidget);
+    expect(find.text('Получатель'), findsOneWidget);
+    expect(find.text('ООО «Грузовик»'), findsOneWidget);
+    expect(find.text('ООО «Получатель»'), findsOneWidget);
     expect(find.text('В пути'), findsOneWidget);
     expect(find.text('Прикрепить фото'), findsOneWidget);
   });

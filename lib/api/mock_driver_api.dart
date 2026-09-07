@@ -30,7 +30,33 @@ class MockDriverApi implements DriverApi {
       vehicle: 'А001АА77',
       startAddress: 'г. Москва, ул. Ленина, д. 1',
       finishAddress: 'г. Санкт-Петербург, пр. Невский, д. 1',
-      shipments: [Shipment(id: 's1', title: 'Груз 1')],
+      comment: 'Вход со стороны двора, звонить за час',
+      cargo: 'Паллеты с запчастями',
+      weightKg: 1000,
+      volumeM3: 5,
+      sender: Party(
+        name: 'Иванов Иван Иванович',
+        company: 'ООО «Грузовик»',
+        phone: '+7 (999) 123-45-67',
+        address: 'г. Москва, ул. Ленина, д. 1',
+        comment: 'Погрузка у ворот №1',
+      ),
+      recipient: Party(
+        name: 'Петров Пётр Петрович',
+        company: 'ООО «Получатель»',
+        phone: '+7 (999) 765-43-21',
+        address: 'г. Санкт-Петербург, пр. Невский, д. 1',
+        comment: 'Разгрузка на складе №2',
+      ),
+      shipments: [
+        Shipment(
+          id: 's1',
+          title: 'Груз 1',
+          weightKg: 1000,
+          volumeM3: 5,
+          comment: 'Не кантовать',
+        ),
+      ],
     ),
     const Trip(
       id: '2',
@@ -43,7 +69,30 @@ class MockDriverApi implements DriverApi {
       vehicle: 'В002ВВ16',
       startAddress: 'г. Казань, ул. Баумана, д. 1',
       finishAddress: 'г. Екатеринбург, ул. Ленина, д. 1',
-      shipments: [Shipment(id: 's2', title: 'Груз 2')],
+      comment: 'Погрузка на складе №1',
+      cargo: 'Коробки с оборудованием',
+      weightKg: 2000,
+      volumeM3: 8,
+      sender: Party(
+        name: 'Сергеев Сергей',
+        company: 'ООО «Грузовик»',
+        phone: '+7 (903) 111-22-33',
+        address: 'г. Казань, ул. Баумана, д. 1',
+      ),
+      recipient: Party(
+        name: 'Алексеев Алексей',
+        company: 'ООО «Получатель»',
+        phone: '+7 (912) 444-55-66',
+        address: 'г. Екатеринбург, ул. Ленина, д. 1',
+      ),
+      shipments: [
+        Shipment(
+          id: 's2',
+          title: 'Груз 2',
+          weightKg: 2000,
+          volumeM3: 8,
+        ),
+      ],
     ),
   ];
 
@@ -99,18 +148,9 @@ class MockDriverApi implements DriverApi {
       throw const ApiException('Рейс не найден', statusCode: 404);
     }
     final current = _trips[index];
-    final updated = Trip(
-      id: current.id,
-      number: current.number,
+    final updated = current.copyWith(
       status: status,
       statusLabel: status == 'in_transit' ? 'В пути' : 'Доставлено',
-      from: current.from,
-      to: current.to,
-      dateStart: current.dateStart,
-      vehicle: current.vehicle,
-      startAddress: current.startAddress,
-      finishAddress: current.finishAddress,
-      shipments: current.shipments,
     );
     _trips[index] = updated;
     return updated;

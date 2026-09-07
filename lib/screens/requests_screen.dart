@@ -188,6 +188,26 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                             ),
                                           ],
                                         ),
+                                        if (trip.cargoLabel.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            trip.cargoLabel,
+                                            style: const TextStyle(color: AppColors.ink),
+                                          ),
+                                        ],
+                                        if (trip.totalWeightKg != null ||
+                                            trip.totalVolumeM3 != null) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            [
+                                              if (trip.totalWeightKg != null)
+                                                formatKg(trip.totalWeightKg),
+                                              if (trip.totalVolumeM3 != null)
+                                                formatM3(trip.totalVolumeM3),
+                                            ].join(' · '),
+                                            style: const TextStyle(color: AppColors.muted),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
