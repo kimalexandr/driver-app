@@ -20,12 +20,12 @@ void main() {
     expect(find.text('Казань → Екатеринбург'), findsOneWidget);
     expect(find.text('15.03.2024 10:00'), findsOneWidget);
     expect(find.text('Назначен'), findsOneWidget);
-    expect(find.byIcon(Icons.person), findsOneWidget);
+    expect(find.byIcon(Icons.person_outline), findsOneWidget);
 
     await tester.tap(find.text('Рейс №001'));
     await tester.pumpAndSettle();
 
     expect(find.text('Рейс №001'), findsOneWidget);
-    expect(find.text('Адрес погрузки'), findsOneWidget);
+    expect(find.text('Откуда'), findsOneWidget);
   });
 }

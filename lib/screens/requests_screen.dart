@@ -4,6 +4,8 @@ import '../api/api_exception.dart';
 import '../api/driver_api.dart';
 import '../models/trip.dart';
 import '../state/app_scope.dart';
+import '../theme/app_theme.dart';
+import '../widgets/status_chip.dart';
 import 'driver_profile_screen.dart';
 import 'request_details_screen.dart';
 
@@ -65,66 +67,73 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.companyName ?? 'Рейсы'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DriverProfileScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.companyName ?? 'Рейсы'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DriverProfileScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(_error!, textAlign: TextAlign.center),
-                        ),
+                        const Icon(Icons.wifi_off, size: 40, color: AppColors.muted),
                         const SizedBox(height: 12),
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _load,
                           child: const Text('Повторить'),
                         ),
                       ],
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: _trips.isEmpty
-                        ? ListView(
-                            children: const [
-                              SizedBox(height: 160),
-                              Center(child: Text('Нет назначенных рейсов')),
-                            ],
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _trips.length,
-                            itemBuilder: (context, index) {
-                              final trip = _trips[index];
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 16),
+                  ),
+                )
+              : RefreshIndicator(
+                  color: AppColors.navy,
+                  onRefresh: _load,
+                  child: _trips.isEmpty
+                      ? ListView(
+                          children: const [
+                            SizedBox(height: 140),
+                            Icon(Icons.route_outlined, size: 48, color: AppColors.muted),
+                            SizedBox(height: 16),
+                            Center(child: Text('Нет назначенных рейсов')),
+                          ],
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                          itemCount: _trips.length,
+                          itemBuilder: (context, index) {
+                            final trip = _trips[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: Material(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(20),
                                 child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
                                   onTap: () async {
                                     await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) =>
-                                            RequestDetailsScreen(
+                                        builder: (context) => RequestDetailsScreen(
                                           trip: trip,
                                           api: widget.api,
                                         ),
@@ -133,43 +142,61 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                     await _load();
                                   },
                                   child: Padding(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.all(18),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          'Рейс №${trip.number}',
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                'Рейс №${trip.number}',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.navy,
+                                                ),
+                                              ),
+                                            ),
+                                            StatusChip(
+                                              status: trip.status,
+                                              label: trip.statusLabel,
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 8),
+                                        const SizedBox(height: 14),
                                         Text(
                                           '${trip.from} → ${trip.to}',
-                                          style: const TextStyle(fontSize: 16),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          trip.dateStart,
-                                          style: const TextStyle(color: Colors.grey),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          trip.statusLabel,
                                           style: const TextStyle(
+                                            fontSize: 16,
                                             fontWeight: FontWeight.w600,
+                                            color: AppColors.ink,
                                           ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.schedule,
+                                              size: 16,
+                                              color: AppColors.muted,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              trip.dateStart,
+                                              style: const TextStyle(color: AppColors.muted),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                  ),
-      ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
     );
   }
 }

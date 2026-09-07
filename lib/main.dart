@@ -5,6 +5,7 @@ import 'screens/requests_screen.dart';
 import 'screens/verification_screen.dart';
 import 'state/app_scope.dart';
 import 'state/auth_controller.dart';
+import 'theme/app_theme.dart';
 
 final appDependencies = AppDependencies();
 
@@ -70,12 +71,12 @@ class _DriverAppState extends State<DriverApp> {
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: '7Rights Driver',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
+        theme: AppTheme.light(),
         home: !_ready
-            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            ? const Scaffold(
+                backgroundColor: AppColors.sand,
+                body: Center(child: CircularProgressIndicator()),
+              )
             : (_auth.isLoggedIn
                 ? const RequestsScreen()
                 : const PhoneInputScreen()),

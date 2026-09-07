@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/api_exception.dart';
 import '../models/driver_profile.dart';
 import '../state/app_scope.dart';
+import '../theme/app_theme.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   const DriverProfileScreen({super.key});
@@ -55,55 +56,83 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     Navigator.pushNamedAndRemoveUntil(context, '/phone', (route) => false);
   }
 
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'В';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first[0] + parts[1][0]).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final driver = _driver ?? AppScope.maybeOf(context)?.auth.driver;
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Профиль')),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(_error!, style: const TextStyle(color: Colors.red)),
-                      ),
-                    _card('ФИО', driver?.name ?? '—'),
-                    _card('Телефон', driver?.phone ?? '—'),
-                    const Spacer(),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _logout,
-                        icon: const Icon(Icons.logout),
-                        label: const Text('Выйти'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(180, 48),
-                        ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Профиль')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: AppColors.navy,
+                    child: Text(
+                      _initials(driver?.name ?? ''),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(_error!, style: const TextStyle(color: AppColors.red)),
+                    ),
+                  _card('ФИО', driver?.name ?? '—'),
+                  _card('Телефон', driver?.phone ?? '—'),
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Выйти'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.red,
+                      side: const BorderSide(color: AppColors.red),
+                    ),
+                  ),
+                ],
               ),
-      ),
+            ),
     );
   }
 
   Widget _card(String title, String content) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        title: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-        subtitle: Text(
-          content,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black),
-        ),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(
+            content,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
       ),
     );
   }

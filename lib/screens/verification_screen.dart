@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../api/api_exception.dart';
 import '../models/auth_session.dart';
 import '../state/app_scope.dart';
+import '../theme/app_theme.dart';
 
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
@@ -43,7 +44,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Введите 4-значный код'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.red,
         ),
       );
       return;
@@ -62,7 +63,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+        SnackBar(content: Text(error.message), backgroundColor: AppColors.red),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -72,36 +73,58 @@ class _VerificationScreenState extends State<VerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final debugCode = _challenge?.debugCode;
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Код из SMS')),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.sand,
+        foregroundColor: AppColors.navy,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
+                'Код из SMS',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
                 'Введите 4-значный код',
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 16, color: AppColors.muted),
               ),
               if (debugCode != null && debugCode.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Код для отладки: $debugCode',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.orange,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8D2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    'Код для отладки: $debugCode',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppColors.orange,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(
                   4,
                   (index) => SizedBox(
-                    width: 56,
+                    width: 68,
+                    height: 72,
                     child: TextField(
                       controller: _controllers[index],
                       focusNode: _focusNodes[index],
@@ -109,9 +132,13 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       textAlign: TextAlign.center,
                       keyboardType: TextInputType.number,
                       maxLength: 1,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
                       decoration: const InputDecoration(
                         counterText: '',
-                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(vertical: 16),
                       ),
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       onChanged: (value) {
@@ -126,12 +153,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const Spacer(),
               ElevatedButton(
                 onPressed: _loading ? null : _verify,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
                 child: Text(_loading ? 'Вход...' : 'Войти'),
               ),
             ],

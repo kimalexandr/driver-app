@@ -6,6 +6,8 @@ import '../api/driver_api.dart';
 import '../models/trip.dart';
 import '../services/location_service.dart';
 import '../state/app_scope.dart';
+import '../theme/app_theme.dart';
+import '../widgets/status_chip.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
   final Trip trip;
@@ -52,13 +54,13 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: AppColors.red),
     );
   }
 
   void _showOk(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
+      SnackBar(content: Text(message), backgroundColor: AppColors.green),
     );
   }
 
@@ -122,91 +124,203 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(title: Text('Рейс №${_trip.number}')),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _row('Статус', _trip.statusLabel),
-              _row('Откуда', _trip.from),
-              _row('Куда', _trip.to),
-              _row('Дата', _trip.dateStart),
-              if (_trip.vehicle.isNotEmpty) _row('ТС', _trip.vehicle),
-              if (_trip.startAddress.isNotEmpty)
-                _row('Адрес погрузки', _trip.startAddress),
-              if (_trip.finishAddress.isNotEmpty)
-                _row('Адрес выгрузки', _trip.finishAddress),
-              if (_trip.shipments.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Text(
-                  'Грузы',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ..._trip.shipments.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(item.title),
+    return Scaffold(
+      appBar: AppBar(title: Text('Рейс №${_trip.number}')),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      StatusChip(status: _trip.status, label: _trip.statusLabel),
+                      const Spacer(),
+                      if (_trip.vehicle.isNotEmpty)
+                        Text(
+                          _trip.vehicle,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (_trip.canStart)
-                ElevatedButton(
-                  onPressed: _busy ? null : () => _setStatus('in_transit'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                  child: const Text('В пути'),
-                ),
-              if (_trip.canDeliver) ...[
-                ElevatedButton(
-                  onPressed: _busy ? null : () => _setStatus('delivered'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                  child: const Text('Доставлено'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: _busy ? null : _sendLocation,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                  child: const Text('Отправить местоположение'),
-                ),
-              ],
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _busy ? null : _attachPhoto,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                ),
-                child: const Text('Прикрепить фото'),
+                  const SizedBox(height: 18),
+                  _routeCard(),
+                  if (_trip.shipments.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _card(
+                      title: 'Грузы',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _trip.shipments
+                            .map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  item.title,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          _actions(),
+        ],
       ),
     );
   }
 
-  Widget _row(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+  Widget _routeCard() {
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          _point(
+            icon: Icons.trip_origin,
+            title: 'Откуда',
+            city: _trip.from,
+            address: _trip.startAddress,
+          ),
+          Container(
+            margin: const EdgeInsets.only(left: 11, top: 4, bottom: 4),
+            height: 18,
+            width: 2,
+            color: AppColors.line,
+          ),
+          _point(
+            icon: Icons.flag_outlined,
+            title: 'Куда',
+            city: _trip.to,
+            address: _trip.finishAddress,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.schedule, size: 16, color: AppColors.muted),
+              const SizedBox(width: 6),
+              Text(
+                _trip.dateStart,
+                style: const TextStyle(color: AppColors.muted),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _point({
+    required IconData icon,
+    required String title,
+    required String city,
+    required String address,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: AppColors.orange),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text(
+                city,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+              if (address.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(address, style: const TextStyle(fontSize: 14, color: AppColors.ink)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _card({String? title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _actions() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            if (_trip.canStart)
+              ElevatedButton(
+                onPressed: _busy ? null : () => _setStatus('in_transit'),
+                child: const Text('В пути'),
+              ),
+            if (_trip.canDeliver)
+              ElevatedButton(
+                onPressed: _busy ? null : () => _setStatus('delivered'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.green),
+                child: const Text('Доставлено'),
+              ),
+            if (_trip.canDeliver) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _sendLocation,
+                icon: const Icon(Icons.my_location),
+                label: const Text('Отправить местоположение'),
+              ),
+            ],
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _attachPhoto,
+              icon: const Icon(Icons.photo_outlined),
+              label: const Text('Прикрепить фото'),
+            ),
+          ],
+        ),
       ),
     );
   }

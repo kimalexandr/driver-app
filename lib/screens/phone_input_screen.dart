@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../api/api_exception.dart';
 import '../services/phone.dart';
 import '../state/app_scope.dart';
+import '../theme/app_theme.dart';
 
 class PhoneInputScreen extends StatefulWidget {
   const PhoneInputScreen({super.key});
@@ -34,7 +35,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+        SnackBar(content: Text(error.message), backgroundColor: AppColors.red),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -43,28 +44,60 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Вход водителя')),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.navy,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.local_shipping_outlined,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const Text(
+                  '7Rights',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.orange,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Вход водителя',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 const Text(
                   'Введите номер телефона, указанный в TMS',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 16, color: AppColors.muted, height: 1.4),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 32),
                 TextFormField(
                   controller: _phoneController,
                   decoration: const InputDecoration(
                     labelText: 'Телефон',
                     hintText: '79991234567',
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.phone_outlined),
                   ),
                   keyboardType: TextInputType.phone,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -76,12 +109,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+                const Spacer(),
                 ElevatedButton(
                   onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
                   child: Text(_loading ? 'Отправка...' : 'Получить код'),
                 ),
               ],
