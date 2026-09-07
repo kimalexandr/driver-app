@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phone_auth_app/models/trip.dart';
 
 void main() {
-  test('читает товар, вес, объём и стороны из JSON', () {
+  test('читает товар, вес, объём и отгрузки из JSON', () {
     final trip = Trip.fromJson({
       'id': 10,
       'number': 'A-10',
@@ -14,24 +14,13 @@ void main() {
       'cargo': 'Запчасти',
       'weight_kg': 1200,
       'volume_m3': 6.5,
-      'sender': {
-        'company': 'ООО Отправитель',
-        'name': 'Иванов',
-        'phone': '79991112233',
-        'address': 'Москва, 1',
-      },
-      'recipient': {
-        'company': 'ООО Получатель',
-        'name': 'Петров',
-        'phone': '79993334455',
-      },
+      'start_company': 'ООО Отправитель',
       'shipments': [
         {
           'id': 1,
-          'name': 'Паллета 1',
-          'weight_kg': 800,
-          'volume_m3': 4,
+          'cargo': {'name': 'Паллета 1', 'weight_kg': 800, 'units': 2, 'measure_unit': 'пал'},
           'comment': 'Хрупкое',
+          'consignee': 'Петров',
         },
       ],
     });
@@ -40,8 +29,7 @@ void main() {
     expect(trip.cargo, 'Запчасти');
     expect(trip.weightKg, 1200);
     expect(trip.volumeM3, 6.5);
-    expect(trip.sender.company, 'ООО Отправитель');
-    expect(trip.sender.phone, '79991112233');
+    expect(trip.startCompany, 'ООО Отправитель');
     expect(trip.recipient.name, 'Петров');
     expect(trip.shipments.single.title, 'Паллета 1');
     expect(trip.shipments.single.weightKg, 800);
@@ -59,25 +47,25 @@ void main() {
         'id': 4,
         'number': 'B-4',
         'status': 'assigned',
-        'loading_city': 'Тула',
-        'loading_address': {'full_address': 'Тула, ул. Советская, 1'},
-        'unloading_city': 'Орёл',
-        'points': [
+        'from': 'Тула',
+        'start_address': 'Тула, ул. Советская, 1',
+        'to': 'Орёл',
+        'finish_address': 'Орёл, пр. Ленина, 10',
+        'cargo': 'Металлопрокат',
+        'weight_kg': 2400,
+        'shipments': [
           {
-            'type': 'loading',
-            'lat': 54.19,
-            'lng': 37.61,
+            'cargo': {'name': 'Лист 3мм', 'weight_kg': 2400},
           },
+        ],
+        'stops': [
+          {'type': 'load', 'lat': 54.19, 'lng': 37.61},
           {
-            'type': 'unloading',
+            'type': 'unload',
             'address': 'Орёл, пр. Ленина, 10',
             'lat': 52.97,
             'lng': 36.06,
           },
-        ],
-        'cargo': {'name': 'Металлопрокат', 'weight': 2400},
-        'goods': [
-          {'title': 'Лист 3мм', 'weight_kg': 2400, 'volume_m3': 3},
         ],
       },
     });
@@ -115,8 +103,6 @@ void main() {
       'weight_kg': 1200,
       'comment': 'Звонить за час',
       'vehicle': 'А123БВ777',
-      'vehicle_brand': 'КАМАЗ',
-      'vehicle_model': '65117',
       'shipments': [
         {
           'id': 1,
@@ -131,8 +117,21 @@ void main() {
           'from_lng': 37.62,
           'to_lat': 55.79,
           'to_lng': 49.12,
-          'cargo_name': 'Запчасти',
-          'cargo': {'weight_kg': 800, 'units': 12, 'measure_unit': 'пал'},
+          'cargo': {
+            'name': 'Запчасти',
+            'weight_kg': 800,
+            'units': 12,
+            'measure_unit': 'пал',
+            'width_m': 1.2,
+            'depth_m': 0.8,
+            'height_m': 1.5,
+          },
+          'load_queue': '3',
+          'unload_queue': '1',
+          'load_gate': {'number': '4', 'comment': 'слева'},
+          'unload_gate': {'number': '2'},
+          'load_comment': 'Ждать пропуска',
+          'unload_comment': 'Рампа',
           'consignee': 'ООО Магазин',
           'comment': 'Хрупкое',
         },
@@ -162,15 +161,18 @@ void main() {
     expect(trip.finishComment, 'Рампа 2');
     expect(trip.cargo, 'Запчасти, Паллеты');
     expect(trip.weightKg, 1200);
-    expect(trip.vehicle, 'КАМАЗ 65117 · А123БВ777');
+    expect(trip.vehicle, 'А123БВ777');
     expect(trip.dateRange, contains('08.09.2026'));
     expect(trip.shipments.single.title, 'Запчасти');
     expect(trip.shipments.single.weightKg, 800);
     expect(trip.shipments.single.units, 12);
     expect(trip.shipments.single.measureUnit, 'пал');
+    expect(trip.shipments.single.sizeLabel, '1.2 × 0.8 × 1.5 м');
+    expect(trip.shipments.single.loadGate.number, '4');
     expect(trip.shipments.single.consignee, 'ООО Магазин');
     expect(trip.startLat, 55.75);
     expect(trip.finishLng, 49.12);
+    expect(trip.stops.length, 2);
     expect(formatUnits(12, 'пал'), '12 пал');
   });
 }

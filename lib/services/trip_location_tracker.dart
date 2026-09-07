@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import '../api/driver_api.dart';
-import '../models/trip.dart';
 import 'location_service.dart';
 
 class TripLocationTracker {

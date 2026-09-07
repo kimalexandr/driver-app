@@ -169,11 +169,11 @@ class Shipment {
 
   String get sizeLabel {
     if (widthM == null && depthM == null && heightM == null) return '';
-    return [
+    return '${[
       widthM,
       depthM,
       heightM,
-    ].map((value) => value == null ? '—' : _trimNum(value)).join(' × ') + ' м';
+    ].map((value) => value == null ? '—' : _trimNum(value)).join(' × ')} м';
   }
 
   factory Shipment.fromJson(Map<String, dynamic> json) {

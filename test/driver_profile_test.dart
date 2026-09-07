@@ -2,67 +2,87 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phone_auth_app/models/driver_profile.dart';
 
 void main() {
-  test('читает профиль водителя из плоского JSON', () {
+  test('читает профиль водителя из driver и auto рядом', () {
     final driver = DriverProfile.fromJson({
-      'id': 7,
-      'name': 'Иванов Иван Иванович',
-      'mobile_phone': '79991234567',
-      'carrier_name': 'ООО Перевозчик',
-      'vehicle_number': 'А123БВ777',
-      'license_number': '99 00 123456',
-      'license_categories': ['C', 'CE'],
-      'inn': '7701234567',
+      'driver': {
+        'id': 1,
+        'name': 'Иванов Иван Иванович',
+        'phone': '79001234567',
+        'license': {
+          'number': '1234567890',
+          'issue_date': '2020-05-12',
+          'issued_by': 'ГИБДД',
+          'issue_city': 'Москва',
+        },
+        'passport': {
+          'series': '4510',
+          'number': '123456',
+          'issue_date': '2015-03-01',
+        },
+      },
+      'auto': {
+        'id': 10,
+        'state_number': 'А123ВС77',
+        'brand': 'Volvo',
+        'model': 'FH',
+        'vin': 'X123',
+        'year': '2019',
+        'color': 'белый',
+        'sts_number': '99АА123456',
+        'car_category': 'C',
+        'body_type': 'Тягач',
+      },
     });
 
-    expect(driver.id, '7');
+    expect(driver.id, '1');
     expect(driver.name, 'Иванов Иван Иванович');
-    expect(driver.phone, '79991234567');
-    expect(driver.carrierName, 'ООО Перевозчик');
-    expect(driver.vehicle, 'А123БВ777');
-    expect(driver.licenseNumber, '99 00 123456');
-    expect(driver.licenseCategories, 'C, CE');
-    expect(driver.inn, '7701234567');
+    expect(driver.phone, '79001234567');
+    expect(driver.license.number, '1234567890');
+    expect(driver.license.issueDate, '12.05.2020');
+    expect(driver.license.issuedBy, 'ГИБДД');
+    expect(driver.license.issueCity, 'Москва');
+    expect(driver.passport.seriesNumber, '4510 123456');
+    expect(driver.passport.issueDate, '01.03.2015');
+    expect(driver.auto?.stateNumber, 'А123ВС77');
+    expect(driver.auto?.brand, 'Volvo');
+    expect(driver.auto?.model, 'FH');
+    expect(driver.vehicle, 'Volvo FH · А123ВС77');
   });
 
-  test('читает вложенные объекты driver, carrier, vehicle, license', () {
+  test('auto null если машина не назначена', () {
     final driver = DriverProfile.fromJson({
       'driver': {
         'id': 3,
         'full_name': 'Петров Пётр',
         'phone': '79990001122',
-        'carrier': {'name': 'ИП Петров'},
-        'vehicle': {'brand': 'КАМАЗ', 'number': 'К001КК199'},
-        'license': {
-          'number': '12 34 567890',
-          'categories': 'CE',
-          'issued_at': '2020-01-15',
-        },
-        'passport_number': '4510 123456',
-        'comment': 'Работает ночью',
+        'company_name': 'ИП Петров',
+        'license': {'number': '12 34 567890', 'issue_date': '2020-01-15'},
       },
+      'auto': null,
     });
 
     expect(driver.name, 'Петров Пётр');
     expect(driver.phone, '79990001122');
     expect(driver.carrierName, 'ИП Петров');
-    expect(driver.vehicle, 'КАМАЗ · К001КК199');
-    expect(driver.licenseNumber, '12 34 567890');
-    expect(driver.licenseCategories, 'CE');
-    expect(driver.licenseIssuedAt, '2020-01-15');
-    expect(driver.passportNumber, '4510 123456');
-    expect(driver.comment, 'Работает ночью');
+    expect(driver.license.number, '12 34 567890');
+    expect(driver.license.issueDate, '15.01.2020');
+    expect(driver.auto, isNull);
+    expect(driver.vehicle, '');
   });
 
   test('читает data-обёртку и ФИО из частей', () {
     final driver = DriverProfile.fromJson({
       'status': 'ok',
       'data': {
-        'id': 9,
-        'last_name': 'Сидоров',
-        'first_name': 'Сидор',
-        'patronymic': 'Сидорович',
-        'mobile_phone': '79995554433',
-        'company': {'name': 'ООО Север'},
+        'driver': {
+          'id': 9,
+          'last_name': 'Сидоров',
+          'first_name': 'Сидор',
+          'patronymic': 'Сидорович',
+          'mobile_phone': '79995554433',
+          'company_name': 'ООО Север',
+        },
+        'auto': null,
       },
     });
 
@@ -73,18 +93,20 @@ void main() {
 
   test('читает поля DriverAuthService::profile', () {
     final driver = DriverProfile.fromJson({
-      'id': 12,
-      'full_name': 'Иванов Иван Иванович',
-      'name': 'Иванов Иван Иванович',
-      'last_name': 'Иванов',
-      'first_name': 'Иван',
-      'patronymic': 'Иванович',
-      'phone': '79991234567',
-      'phone_secondary': '79990001122',
-      'email': 'driver@7rights.ru',
-      'license_number': '99 00 123456',
-      'company_name': 'ООО Перевозчик',
-      'team_id': 5,
+      'driver': {
+        'id': 12,
+        'full_name': 'Иванов Иван Иванович',
+        'name': 'Иванов Иван Иванович',
+        'last_name': 'Иванов',
+        'first_name': 'Иван',
+        'patronymic': 'Иванович',
+        'phone': '79991234567',
+        'phone_secondary': '79990001122',
+        'email': 'driver@7rights.ru',
+        'company_name': 'ООО Перевозчик',
+        'license': {'number': '99 00 123456'},
+        'team_id': 5,
+      },
     });
 
     expect(driver.id, '12');
@@ -92,7 +114,7 @@ void main() {
     expect(driver.phone, '79991234567');
     expect(driver.phoneSecondary, '79990001122');
     expect(driver.email, 'driver@7rights.ru');
-    expect(driver.licenseNumber, '99 00 123456');
+    expect(driver.license.number, '99 00 123456');
     expect(driver.carrierName, 'ООО Перевозчик');
   });
 }
