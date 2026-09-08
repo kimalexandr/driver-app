@@ -87,9 +87,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   Future<void> _openRoute(Trip trip) async {
     final opened = await openYandexRoute(
-      to: trip.destination,
-      toLat: trip.destinationLat,
-      toLng: trip.destinationLng,
+      from: trip.startAddress.isNotEmpty ? trip.startAddress : trip.from,
+      to: trip.finishAddress.isNotEmpty ? trip.finishAddress : trip.to,
+      fromLat: trip.startLat,
+      fromLng: trip.startLng,
+      toLat: trip.finishLat,
+      toLng: trip.finishLng,
     );
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

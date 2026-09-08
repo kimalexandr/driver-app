@@ -83,12 +83,30 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     }
   }
 
-  Future<void> _openRoute({
+  Future<void> _openPlace({
     required String address,
     double? lat,
     double? lng,
   }) async {
-    final opened = await openYandexRoute(to: address, toLat: lat, toLng: lng);
+    final opened = await openYandexPlace(
+      address: address,
+      lat: lat,
+      lng: lng,
+    );
+    if (!opened && mounted) {
+      _showError('Нет адреса или координат для карты');
+    }
+  }
+
+  Future<void> _openTripRoute() async {
+    final opened = await openYandexRoute(
+      from: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
+      to: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
+      fromLat: _trip.startLat,
+      fromLng: _trip.startLng,
+      toLat: _trip.finishLat,
+      toLng: _trip.finishLng,
+    );
     if (!opened && mounted) {
       _showError('Нет адреса или координат для маршрута');
     }
@@ -139,14 +157,11 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Рейс №${_trip.number}')),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                   Row(
                     children: [
                       StatusChip(status: _trip.status, label: _trip.statusLabel),
@@ -243,12 +258,9 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     ),
                   ],
                 ],
-              ),
-            ),
-          ),
-          _actions(),
-        ],
+        ),
       ),
+      bottomNavigationBar: _actions(),
     );
   }
 
@@ -284,7 +296,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   Widget _stopRow(TripStop stop) {
     final kind = stop.isLoad ? 'Погрузка' : (stop.isUnload ? 'Выгрузка' : stop.type);
     return InkWell(
-      onTap: () => _openRoute(
+      onTap: () => _openPlace(
         address: stop.address.isNotEmpty ? stop.address : stop.title,
         lat: stop.lat,
         lng: stop.lng,
@@ -339,7 +351,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             company: _trip.startCompany,
             address: _trip.startAddress,
             comment: _trip.startComment,
-            onTap: () => _openRoute(
+            onTap: () => _openPlace(
               address: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
               lat: _trip.startLat,
               lng: _trip.startLng,
@@ -358,7 +370,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             company: _trip.finishCompany,
             address: _trip.finishAddress,
             comment: _trip.finishComment,
-            onTap: () => _openRoute(
+            onTap: () => _openPlace(
               address: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
               lat: _trip.finishLat,
               lng: _trip.finishLng,
@@ -554,7 +566,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         if (item.hasRoute) ...[
           const SizedBox(height: 8),
           GestureDetector(
-            onTap: () => _openRoute(
+            onTap: () => _openPlace(
               address: item.fromAddress.isNotEmpty ? item.fromAddress : item.from,
               lat: item.fromLat,
               lng: item.fromLng,
@@ -574,7 +586,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           if (item.to.isNotEmpty || item.toAddress.isNotEmpty) ...[
             const SizedBox(height: 4),
             GestureDetector(
-              onTap: () => _openRoute(
+              onTap: () => _openPlace(
                 address: item.toAddress.isNotEmpty ? item.toAddress : item.to,
                 lat: item.toLat,
                 lng: item.toLng,
@@ -660,42 +672,41 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Widget _actions() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.line)),
-      ),
+    return Material(
+      color: Colors.white,
+      elevation: 6,
       child: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            if (_trip.canStart)
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            if (_trip.canStart) ...[
               ElevatedButton(
                 onPressed: _busy ? null : () => _setStatus('in_transit'),
                 child: const Text('В пути'),
               ),
-            if (_trip.canDeliver)
+              const SizedBox(height: 10),
+            ],
+            if (_trip.canDeliver) ...[
               ElevatedButton(
                 onPressed: _busy ? null : () => _setStatus('delivered'),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.green),
                 child: const Text('Доставлено'),
               ),
-            if (_trip.canDeliver) ...[
               const SizedBox(height: 10),
+            ],
+            if (_trip.canDeliver) ...[
               OutlinedButton.icon(
                 onPressed: _busy ? null : _sendLocation,
                 icon: const Icon(Icons.my_location),
                 label: const Text('Отправить местоположение'),
               ),
+              const SizedBox(height: 10),
             ],
-            const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: () => _openRoute(
-                address: _trip.destination,
-                lat: _trip.destinationLat,
-                lng: _trip.destinationLng,
-              ),
+              onPressed: _openTripRoute,
               icon: const Icon(Icons.navigation_outlined),
               label: const Text('Маршрут'),
             ),
@@ -706,6 +717,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               label: const Text('Прикрепить фото'),
             ),
           ],
+          ),
         ),
       ),
     );

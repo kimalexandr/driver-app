@@ -76,9 +76,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       appBar: AppBar(title: const Text('Профиль')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-              children: [
+          : SafeArea(
+              top: false,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                children: [
                 Center(
                   child: CircleAvatar(
                     radius: 40,
@@ -142,6 +144,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   ),
                 ),
               ],
+              ),
             ),
     );
   }
