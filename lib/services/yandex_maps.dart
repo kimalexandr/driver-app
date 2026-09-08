@@ -69,7 +69,10 @@ Future<bool> _openPair({required String app, required String web}) async {
 
 Future<bool> _open(String url) async {
   try {
-    return await launchUrlString(url, mode: LaunchMode.externalApplication);
+    return await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
   } catch (_) {
     return false;
   }
