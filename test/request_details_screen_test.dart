@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Рейс №001'), findsOneWidget);
-    expect(find.text('Назначен'), findsOneWidget);
+    expect(find.text('Назначен'), findsWidgets);
     expect(find.text('Москва'), findsOneWidget);
     expect(find.text('Санкт-Петербург'), findsOneWidget);
     expect(find.text('г. Москва, ул. Ленина, д. 1'), findsOneWidget);
@@ -58,10 +58,13 @@ void main() {
     expect(find.text('Паллеты с запчастями'), findsOneWidget);
     expect(find.text('1000 кг'), findsWidgets);
     expect(find.text('5 м³'), findsWidgets);
-    expect(find.text('Задача'), findsOneWidget);
+    expect(find.text('Ход рейса'), findsOneWidget);
+    expect(find.text('Для исполнения'), findsNothing);
+    expect(find.text('Задача'), findsNothing);
     expect(find.text('Груз'), findsOneWidget);
     expect(find.text('Погрузка'), findsOneWidget);
     expect(find.text('Выгрузка'), findsOneWidget);
+    expect(find.text('Сейчас'), findsOneWidget);
     expect(find.textContaining('Опаздываете'), findsOneWidget);
     expect(find.textContaining('705 км'), findsOneWidget);
     expect(find.text('Диспетчер'), findsOneWidget);
@@ -71,7 +74,7 @@ void main() {
     expect(find.text('Получатель'), findsOneWidget);
     expect(find.text('ООО «Грузовик»'), findsOneWidget);
     expect(find.text('ООО «Получатель»'), findsOneWidget);
-    expect(find.text('В пути'), findsOneWidget);
-    expect(find.text('Прикрепить фото'), findsOneWidget);
+    expect(find.text('В пути'), findsWidgets);
+    expect(find.byTooltip('Прикрепить фото'), findsOneWidget);
   });
 }

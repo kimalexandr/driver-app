@@ -12,7 +12,7 @@ import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
-import '../widgets/trip_deadline_banner.dart';
+import '../widgets/trip_status_thread.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
   final Trip trip;
@@ -160,62 +160,55 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Рейс №${_trip.number}')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                StatusChip(status: _trip.status, label: _trip.statusLabel),
-                const Spacer(),
-                if (_trip.dateRange.isNotEmpty)
-                  Text(
-                    _trip.dateRange,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w600,
+      body: Column(
+        children: [
+          _pinnedBar(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
+                  _autoCard(),
+                  if (_showTripComment) ...[
+                    const SizedBox(height: 16),
+                    _card(
+                      title: 'Комментарий рейса',
+                      child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
                     ),
-                  ),
-              ],
+                  ],
+                  if (_hasCargoBlock) ...[
+                    const SizedBox(height: 16),
+                    _cargoCard(),
+                  ],
+                  if (_showSender) ...[
+                    const SizedBox(height: 16),
+                    _partyCard(
+                      'Отправитель',
+                      _trip.sender,
+                      hideCompany: _trip.startCompany,
+                      hideAddress: _trip.startAddress,
+                    ),
+                  ],
+                  if (_showRecipient) ...[
+                    const SizedBox(height: 16),
+                    _partyCard(
+                      'Получатель',
+                      _trip.recipient,
+                      hideCompany: _trip.finishCompany,
+                      hideAddress: _trip.finishAddress,
+                    ),
+                  ],
+                  if (_trip.hasAttorney) ...[
+                    const SizedBox(height: 16),
+                    _attorneyCard(),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            TripDeadlineBanner(trip: _trip),
-            if (_trip.dispatcherPhone.isNotEmpty || _trip.dispatcherName.isNotEmpty)
-              _dispatcherCard(),
-            _executionCard(),
-            _autoCard(),
-            _taskCard(),
-            if (_showTripComment) ...[
-              const SizedBox(height: 16),
-              _card(
-                title: 'Комментарий рейса',
-                child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
-              ),
-            ],
-            if (_hasCargoBlock) ...[
-              const SizedBox(height: 16),
-              _cargoCard(),
-            ],
-            if (_showSender) ...[
-              const SizedBox(height: 16),
-              _partyCard('Отправитель', _trip.sender, hideCompany: _trip.startCompany, hideAddress: _trip.startAddress),
-            ],
-            if (_showRecipient) ...[
-              const SizedBox(height: 16),
-              _partyCard(
-                'Получатель',
-                _trip.recipient,
-                hideCompany: _trip.finishCompany,
-                hideAddress: _trip.finishAddress,
-              ),
-            ],
-            if (_trip.hasAttorney) ...[
-              const SizedBox(height: 16),
-              _attorneyCard(),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: _actions(),
     );
@@ -281,11 +274,71 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         ));
   }
 
+  Widget _pinnedBar() {
+    final hasDispatcher =
+        _trip.dispatcherName.isNotEmpty || _trip.dispatcherPhone.isNotEmpty;
+    return Material(
+      color: Colors.white,
+      child: Container(
+        width: double.infinity,
+        height: 64,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: AppColors.line)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+        child: Row(
+          children: [
+            StatusChip(status: _trip.status, label: _trip.statusLabel),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    hasDispatcher && _trip.dispatcherName.isNotEmpty
+                        ? _trip.dispatcherName
+                        : (_trip.dateRange.isNotEmpty ? _trip.dateRange : 'Рейс'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasDispatcher ? 'Диспетчер' : ' ',
+                    maxLines: 1,
+                    style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: _trip.dispatcherPhone.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Позвонить диспетчеру',
+                      onPressed: () => _call(_trip.dispatcherPhone),
+                      icon: const Icon(Icons.phone_outlined),
+                      color: AppColors.navy,
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _autoCard() {
     final auto = AppScope.maybeOf(context)?.auth.driver?.auto;
     if (auto == null || !auto.hasContent) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
       child: _card(
         title: 'Машина',
         child: Column(
@@ -315,65 +368,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
-  Widget _dispatcherCard() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _card(
-        title: 'Диспетчер',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_trip.dispatcherName.isNotEmpty)
-              Text(
-                _trip.dispatcherName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            if (_trip.dispatcherPhone.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () => _call(_trip.dispatcherPhone),
-                icon: const Icon(Icons.phone),
-                label: Text('Позвонить  ${_trip.dispatcherPhone}'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _executionCard() {
-    final km = tripDistanceKm(_trip);
-    final lines = <String>[
-      if (formatDistanceKm(km).isNotEmpty)
-        '${formatDistanceKm(km)} между пунктами',
-      if (_trip.dateStart.isNotEmpty) 'Погрузка ${_trip.dateStart}',
-      if (_trip.loadWindowLabel.isNotEmpty) 'Окно погрузки ${_trip.loadWindowLabel}',
-      if (_trip.dateEnd.isNotEmpty) 'Выгрузка ${_trip.dateEnd}',
-      if (_trip.unloadWindowLabel.isNotEmpty)
-        'Окно выгрузки ${_trip.unloadWindowLabel}',
-      if (_trip.totalWeightKg != null) formatKg(_trip.totalWeightKg),
-      if (_trip.totalVolumeM3 != null) formatM3(_trip.totalVolumeM3),
-    ];
-    if (lines.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _card(
-        title: 'Для исполнения',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final line in lines)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(line, style: const TextStyle(fontSize: 15, height: 1.35)),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _attorneyCard() {
     return _card(
       title: 'Доверенность',
@@ -389,23 +383,25 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             const SizedBox(height: 4),
             Text('до ${_trip.attorneyDate}', style: const TextStyle(color: AppColors.muted)),
           ],
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _showAttorney,
-            icon: const Icon(Icons.description_outlined),
-            label: const Text('Показать'),
-          ),
-          if (_trip.attorneyUrl.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse(_trip.attorneyUrl),
-                mode: LaunchMode.externalApplication,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _showAttorney,
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Показать'),
               ),
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('Скачать'),
-            ),
-          ],
+              if (_trip.attorneyUrl.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => launchUrl(
+                    Uri.parse(_trip.attorneyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  icon: const Icon(Icons.download_outlined, size: 18),
+                  label: const Text('Скачать'),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -470,121 +466,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
-  Widget _taskCard() {
-    return _card(
-      title: 'Задача',
-      child: _trip.stops.isNotEmpty ? _stopsTimeline() : _routeTimeline(),
-    );
-  }
-
-  Widget _routeTimeline() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _point(
-          icon: Icons.trip_origin,
-          title: 'Погрузка',
-          city: _trip.from,
-          company: _trip.startCompany,
-          address: _trip.startAddress,
-          comment: _trip.startComment,
-          when: _trip.dateStart,
-          window: _trip.loadWindowLabel,
-          onTap: () => _openPlace(
-            address: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
-            lat: _trip.startLat,
-            lng: _trip.startLng,
-          ),
-        ),
-        _routeLine(),
-        _point(
-          icon: Icons.flag_outlined,
-          title: 'Выгрузка',
-          city: _trip.to,
-          company: _trip.finishCompany,
-          address: _trip.finishAddress,
-          comment: _trip.finishComment,
-          when: _trip.dateEnd,
-          window: _trip.unloadWindowLabel,
-          onTap: () => _openPlace(
-            address: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
-            lat: _trip.finishLat,
-            lng: _trip.finishLng,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _stopsTimeline() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < _trip.stops.length; i++) ...[
-          if (i > 0) _routeLine(),
-          _stopRow(_trip.stops[i]),
-        ],
-      ],
-    );
-  }
-
-  Widget _routeLine() {
-    return Container(
-      margin: const EdgeInsets.only(left: 11, top: 4, bottom: 4),
-      height: 18,
-      width: 2,
-      color: AppColors.line,
-    );
-  }
-
-  Widget _stopRow(TripStop stop) {
-    final kind = stop.isLoad ? 'Погрузка' : (stop.isUnload ? 'Выгрузка' : stop.type);
-    final company = stop.isLoad
-        ? _trip.startCompany
-        : (stop.isUnload ? _trip.finishCompany : '');
-    final comment = stop.comment.isNotEmpty
-        ? stop.comment
-        : (stop.isLoad
-            ? _trip.startComment
-            : (stop.isUnload ? _trip.finishComment : ''));
-    final showCargo = stop.cargoName.isNotEmpty &&
-        !_same(stop.cargoName, _trip.cargo) &&
-        !_trip.shipments.any((item) => _same(item.title, stop.cargoName));
-    return _point(
-      icon: stop.isUnload ? Icons.flag_outlined : Icons.trip_origin,
-      title: kind,
-      city: stop.title.isNotEmpty ? stop.title : _cityFromStop(stop),
-      company: company,
-      address: stop.address.isNotEmpty && !_same(stop.address, stop.title)
-          ? stop.address
-          : '',
-      when: stop.plannedAt.isNotEmpty
-          ? stop.plannedAt
-          : (stop.isLoad ? _trip.dateStart : _trip.dateEnd),
-      window: stop.isLoad
-          ? _trip.loadWindowLabel
-          : (stop.isUnload ? _trip.unloadWindowLabel : ''),
-      comment: [
-        if (stop.queue.isNotEmpty) 'очередь ${stop.queue}',
-        if (stop.gate.number.isNotEmpty) 'ворота ${stop.gate.number}',
-        if (stop.gate.comment.isNotEmpty) stop.gate.comment,
-        if (showCargo) stop.cargoName,
-        if (comment.isNotEmpty) comment,
-      ].join(' · '),
-      onTap: () => _openPlace(
-        address: stop.address.isNotEmpty ? stop.address : stop.title,
-        lat: stop.lat,
-        lng: stop.lng,
-      ),
-    );
-  }
-
-  String _cityFromStop(TripStop stop) {
-    if (stop.isLoad && _trip.from.isNotEmpty) return _trip.from;
-    if (stop.isUnload && _trip.to.isNotEmpty) return _trip.to;
-    return stop.address;
-  }
-
   Widget _cargoCard() {
     final leftoverWeight = _trip.totalWeightKg != null &&
         _trip.shipments.every((item) => item.weightKg == null);
@@ -618,80 +499,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               const Divider(height: 20),
             _shipmentRow(_trip.shipments[i]),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _point({
-    required IconData icon,
-    required String title,
-    required String city,
-    required String address,
-    String company = '',
-    String comment = '',
-    String when = '',
-    String window = '',
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 22, color: AppColors.orange),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-                const SizedBox(height: 2),
-                Text(
-                  city.isNotEmpty ? city : 'Адрес не указан',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-                if (company.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(company, style: const TextStyle(fontSize: 14, color: AppColors.ink)),
-                ],
-                if (address.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    address,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.ink,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ],
-                if (when.isNotEmpty || window.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    [
-                      if (when.isNotEmpty) when,
-                      if (window.isNotEmpty) 'окно $window',
-                    ].join(' · '),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.orange,
-                    ),
-                  ),
-                ],
-                if (comment.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(comment, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
-                ],
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -938,61 +745,79 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Widget _actions() {
+    final primaryLabel = _trip.canStart
+        ? 'В пути'
+        : (_trip.canDeliver ? 'Доставлено' : '');
     return Material(
       color: Colors.white,
-      elevation: 6,
+      elevation: 8,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          child: Row(
             children: [
-            if (_trip.canStart) ...[
-              ElevatedButton(
-                onPressed: _busy ? null : () => _setStatus('in_transit'),
-                child: const Text('В пути'),
+              if (primaryLabel.isNotEmpty)
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _setStatus(_trip.canStart ? 'in_transit' : 'delivered'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      backgroundColor:
+                          _trip.canDeliver ? AppColors.green : AppColors.navy,
+                    ),
+                    child: Text(primaryLabel),
+                  ),
+                )
+              else
+                const Expanded(
+                  child: Text(
+                    'Рейс завершён',
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 6),
+              _iconAction(
+                icon: Icons.navigation_outlined,
+                tooltip: 'Маршрут',
+                onPressed: _openTripRoute,
               ),
-              const SizedBox(height: 10),
-            ],
-            if (_trip.canDeliver) ...[
-              ElevatedButton(
-                onPressed: _busy ? null : () => _setStatus('delivered'),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.green),
-                child: const Text('Доставлено'),
+              if (_trip.needsLocation)
+                _iconAction(
+                  icon: Icons.my_location,
+                  tooltip: 'Отправить местоположение',
+                  onPressed: _busy ? null : _sendLocation,
+                ),
+              _iconAction(
+                icon: Icons.photo_outlined,
+                tooltip: 'Прикрепить фото',
+                onPressed: _busy ? null : _attachPhoto,
               ),
-              const SizedBox(height: 10),
             ],
-            if (_trip.canDeliver) ...[
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _sendLocation,
-                icon: const Icon(Icons.my_location),
-                label: const Text('Отправить местоположение'),
-              ),
-              const SizedBox(height: 10),
-            ],
-            if (_trip.dispatcherPhone.isNotEmpty) ...[
-              ElevatedButton.icon(
-                onPressed: () => _call(_trip.dispatcherPhone),
-                icon: const Icon(Icons.phone),
-                label: const Text('Позвонить диспетчеру'),
-              ),
-              const SizedBox(height: 10),
-            ],
-            OutlinedButton.icon(
-              onPressed: _openTripRoute,
-              icon: const Icon(Icons.navigation_outlined),
-              label: const Text('Маршрут'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _attachPhoto,
-              icon: const Icon(Icons.photo_outlined),
-              label: const Text('Прикрепить фото'),
-            ),
-          ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _iconAction({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onPressed,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 22),
+      color: AppColors.navy,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }

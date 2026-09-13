@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Рейс №001'), findsOneWidget);
-    expect(find.text('Задача'), findsOneWidget);
+    expect(find.text('Ход рейса'), findsOneWidget);
     expect(find.text('Погрузка'), findsOneWidget);
   });
 
