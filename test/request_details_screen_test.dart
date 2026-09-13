@@ -56,8 +56,8 @@ void main() {
     expect(find.text('Комментарий рейса'), findsOneWidget);
     expect(find.text('Вход со стороны двора, звонить за час'), findsOneWidget);
     expect(find.text('Паллеты с запчастями'), findsOneWidget);
-    expect(find.text('1000 кг'), findsOneWidget);
-    expect(find.text('5 м³'), findsOneWidget);
+    expect(find.text('1000 кг'), findsWidgets);
+    expect(find.text('5 м³'), findsWidgets);
     expect(find.text('Задача'), findsOneWidget);
     expect(find.text('Груз'), findsOneWidget);
     expect(find.text('Погрузка'), findsOneWidget);

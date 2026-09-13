@@ -247,7 +247,11 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
       child: Row(
         children: [
           Expanded(
-            child: Column(
+            child: FittedBox(
+              alignment: Alignment.topLeft,
+              fit: BoxFit.scaleDown,
+              child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -288,6 +292,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
                 _vuLine('5', widget.license.displayNumber),
                 _vuLine('8', place),
               ],
+            ),
             ),
           ),
           const SizedBox(width: 10),
@@ -340,7 +345,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
     return Container(
       key: key,
       width: double.infinity,
-      height: 168,
+      height: 176,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(

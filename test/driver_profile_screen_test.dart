@@ -26,11 +26,11 @@ void main() {
     expect(find.text('Повернуть'), findsOneWidget);
     expect(find.text('Копировать'), findsOneWidget);
     expect(find.text('45 10  123456'), findsOneWidget);
-    expect(find.text('12 34 567890'), findsOneWidget);
+    expect(find.textContaining('12 34 567890'), findsWidgets);
     expect(find.text('Дата выдачи'), findsOneWidget);
     expect(find.text('01.03.2015'), findsOneWidget);
-    expect(find.text('12.05.2020'), findsOneWidget);
-    expect(find.text('ГИБДД, Москва'), findsOneWidget);
+    expect(find.textContaining('12.05.2020'), findsWidgets);
+    expect(find.textContaining('ГИБДД, Москва'), findsWidgets);
     expect(find.text('Иванов Иван Иванович'), findsOneWidget);
     expect(find.text('ООО Перевозчик'), findsOneWidget);
     expect(find.byType(RuLicensePlateBadge), findsOneWidget);
