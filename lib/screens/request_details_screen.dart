@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,6 +12,7 @@ import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/trip_deadline_banner.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
   final Trip trip;
@@ -177,7 +179,11 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+            TripDeadlineBanner(trip: _trip),
+            if (_trip.dispatcherPhone.isNotEmpty || _trip.dispatcherName.isNotEmpty)
+              _dispatcherCard(),
+            _executionCard(),
             _autoCard(),
             _taskCard(),
             if (_showTripComment) ...[
@@ -203,6 +209,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 hideCompany: _trip.finishCompany,
                 hideAddress: _trip.finishAddress,
               ),
+            ],
+            if (_trip.hasAttorney) ...[
+              const SizedBox(height: 16),
+              _attorneyCard(),
             ],
           ],
         ),
@@ -305,6 +315,161 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
+  Widget _dispatcherCard() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _card(
+        title: 'Диспетчер',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_trip.dispatcherName.isNotEmpty)
+              Text(
+                _trip.dispatcherName,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            if (_trip.dispatcherPhone.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () => _call(_trip.dispatcherPhone),
+                icon: const Icon(Icons.phone),
+                label: Text('Позвонить  ${_trip.dispatcherPhone}'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _executionCard() {
+    final km = tripDistanceKm(_trip);
+    final lines = <String>[
+      if (formatDistanceKm(km).isNotEmpty)
+        '${formatDistanceKm(km)} между пунктами',
+      if (_trip.dateStart.isNotEmpty) 'Погрузка ${_trip.dateStart}',
+      if (_trip.loadWindowLabel.isNotEmpty) 'Окно погрузки ${_trip.loadWindowLabel}',
+      if (_trip.dateEnd.isNotEmpty) 'Выгрузка ${_trip.dateEnd}',
+      if (_trip.unloadWindowLabel.isNotEmpty)
+        'Окно выгрузки ${_trip.unloadWindowLabel}',
+      if (_trip.totalWeightKg != null) formatKg(_trip.totalWeightKg),
+      if (_trip.totalVolumeM3 != null) formatM3(_trip.totalVolumeM3),
+    ];
+    if (lines.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _card(
+        title: 'Для исполнения',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final line in lines)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(line, style: const TextStyle(fontSize: 15, height: 1.35)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _attorneyCard() {
+    return _card(
+      title: 'Доверенность',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_trip.attorneyNumber.isNotEmpty)
+            Text(
+              '№ ${_trip.attorneyNumber}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+          if (_trip.attorneyDate.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('до ${_trip.attorneyDate}', style: const TextStyle(color: AppColors.muted)),
+          ],
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _showAttorney,
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Показать'),
+          ),
+          if (_trip.attorneyUrl.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(_trip.attorneyUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Скачать'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showAttorney() {
+    final driver = AppScope.maybeOf(context)?.auth.driver;
+    final text = [
+      'Доверенность на водителя',
+      if (_trip.attorneyNumber.isNotEmpty) 'Номер: ${_trip.attorneyNumber}',
+      if (_trip.attorneyDate.isNotEmpty) 'Дата: ${_trip.attorneyDate}',
+      if (driver?.name.isNotEmpty ?? false) 'Водитель: ${driver!.name}',
+      if (_trip.vehicle.isNotEmpty) 'ТС: ${_trip.vehicle}',
+      if (_trip.cargoLabel.isNotEmpty) 'Груз: ${_trip.cargoLabel}',
+      'Маршрут: ${_trip.from} → ${_trip.to}',
+      if (_trip.dateStart.isNotEmpty) 'Погрузка: ${_trip.dateStart}',
+      if (_trip.dateEnd.isNotEmpty) 'Выгрузка: ${_trip.dateEnd}',
+    ].join('\n');
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Доверенность',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              Text(text, style: const TextStyle(fontSize: 16, height: 1.45)),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: text));
+                  if (context.mounted) Navigator.pop(context);
+                },
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('Скопировать'),
+              ),
+              if (_trip.attorneyUrl.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    launchUrl(
+                      Uri.parse(_trip.attorneyUrl),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Скачать файл'),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _taskCard() {
     return _card(
       title: 'Задача',
@@ -323,6 +488,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           company: _trip.startCompany,
           address: _trip.startAddress,
           comment: _trip.startComment,
+          when: _trip.dateStart,
+          window: _trip.loadWindowLabel,
           onTap: () => _openPlace(
             address: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
             lat: _trip.startLat,
@@ -337,6 +504,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           company: _trip.finishCompany,
           address: _trip.finishAddress,
           comment: _trip.finishComment,
+          when: _trip.dateEnd,
+          window: _trip.unloadWindowLabel,
           onTap: () => _openPlace(
             address: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
             lat: _trip.finishLat,
@@ -389,6 +558,12 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       address: stop.address.isNotEmpty && !_same(stop.address, stop.title)
           ? stop.address
           : '',
+      when: stop.plannedAt.isNotEmpty
+          ? stop.plannedAt
+          : (stop.isLoad ? _trip.dateStart : _trip.dateEnd),
+      window: stop.isLoad
+          ? _trip.loadWindowLabel
+          : (stop.isUnload ? _trip.unloadWindowLabel : ''),
       comment: [
         if (stop.queue.isNotEmpty) 'очередь ${stop.queue}',
         if (stop.gate.number.isNotEmpty) 'ворота ${stop.gate.number}',
@@ -455,6 +630,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     required String address,
     String company = '',
     String comment = '',
+    String when = '',
+    String window = '',
     VoidCallback? onTap,
   }) {
     return InkWell(
@@ -491,6 +668,20 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       fontSize: 14,
                       color: AppColors.ink,
                       decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+                if (when.isNotEmpty || window.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      if (when.isNotEmpty) when,
+                      if (window.isNotEmpty) 'окно $window',
+                    ].join(' · '),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.orange,
                     ),
                   ),
                 ],
@@ -777,6 +968,14 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 onPressed: _busy ? null : _sendLocation,
                 icon: const Icon(Icons.my_location),
                 label: const Text('Отправить местоположение'),
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (_trip.dispatcherPhone.isNotEmpty) ...[
+              ElevatedButton.icon(
+                onPressed: () => _call(_trip.dispatcherPhone),
+                icon: const Icon(Icons.phone),
+                label: const Text('Позвонить диспетчеру'),
               ),
               const SizedBox(height: 10),
             ],

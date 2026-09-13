@@ -241,13 +241,19 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   const SizedBox(height: 24),
                   _section('Документы'),
                   const Text(
-                    'Нажмите карточку, чтобы скопировать номер',
+                    'Паспорт копируется нажатием. ВУ можно перевернуть и скопировать.',
                     style: TextStyle(color: AppColors.muted, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
-                  PassportDocumentCard(passport: passport),
+                  PassportDocumentCard(
+                    passport: passport,
+                    holderName: driver?.name ?? '',
+                  ),
                   const SizedBox(height: 12),
-                  LicenseDocumentCard(license: license),
+                  LicenseDocumentCard(
+                    license: license,
+                    holderName: driver?.name ?? '',
+                  ),
                   if (_hasContacts(driver)) ...[
                     const SizedBox(height: 24),
                     _section('Контакты'),

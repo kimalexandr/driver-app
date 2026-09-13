@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'json_fields.dart';
 
 class Party {
@@ -67,6 +69,7 @@ class TripStop {
   final String comment;
   final String cargoName;
   final num? weightKg;
+  final String plannedAt;
 
   const TripStop({
     this.type = '',
@@ -79,6 +82,7 @@ class TripStop {
     this.comment = '',
     this.cargoName = '',
     this.weightKg,
+    this.plannedAt = '',
   });
 
   bool get isLoad => type == 'load' || type == 'loading';
@@ -96,6 +100,7 @@ class TripStop {
       comment: jsonText(json, ['comment']),
       cargoName: jsonText(json, ['cargo_name', 'cargo']),
       weightKg: jsonNumber(json, ['weight_kg', 'weight']),
+      plannedAt: formatTripDate(json['planned_at'] ?? json['date'] ?? json['datetime']),
     );
   }
 }
@@ -255,6 +260,16 @@ class Trip {
   final Party recipient;
   final List<Shipment> shipments;
   final List<TripStop> stops;
+  final String loadWindowFrom;
+  final String loadWindowTo;
+  final String unloadWindowFrom;
+  final String unloadWindowTo;
+  final num? distanceKm;
+  final String dispatcherName;
+  final String dispatcherPhone;
+  final String attorneyNumber;
+  final String attorneyDate;
+  final String attorneyUrl;
 
   const Trip({
     required this.id,
@@ -284,6 +299,16 @@ class Trip {
     this.recipient = const Party(),
     this.shipments = const [],
     this.stops = const [],
+    this.loadWindowFrom = '',
+    this.loadWindowTo = '',
+    this.unloadWindowFrom = '',
+    this.unloadWindowTo = '',
+    this.distanceKm,
+    this.dispatcherName = '',
+    this.dispatcherPhone = '',
+    this.attorneyNumber = '',
+    this.attorneyDate = '',
+    this.attorneyUrl = '',
   });
 
   bool get canStart => status == 'created' || status == 'assigned';
@@ -326,6 +351,12 @@ class Trip {
     return names.join(', ');
   }
 
+  bool get hasAttorney =>
+      attorneyNumber.isNotEmpty || attorneyDate.isNotEmpty || attorneyUrl.isNotEmpty;
+
+  String get loadWindowLabel => formatTimeWindow(loadWindowFrom, loadWindowTo);
+  String get unloadWindowLabel => formatTimeWindow(unloadWindowFrom, unloadWindowTo);
+
   Trip copyWith({String? status, String? statusLabel}) {
     return Trip(
       id: id,
@@ -355,6 +386,16 @@ class Trip {
       recipient: recipient,
       shipments: shipments,
       stops: stops,
+      loadWindowFrom: loadWindowFrom,
+      loadWindowTo: loadWindowTo,
+      unloadWindowFrom: unloadWindowFrom,
+      unloadWindowTo: unloadWindowTo,
+      distanceKm: distanceKm,
+      dispatcherName: dispatcherName,
+      dispatcherPhone: dispatcherPhone,
+      attorneyNumber: attorneyNumber,
+      attorneyDate: attorneyDate,
+      attorneyUrl: attorneyUrl,
     );
   }
 
@@ -390,6 +431,16 @@ class Trip {
           recipient.hasContent ? recipient : other.recipient.orFallback(recipient),
       shipments: shipments.isNotEmpty ? shipments : other.shipments,
       stops: stops.isNotEmpty ? stops : other.stops,
+      loadWindowFrom: pick(loadWindowFrom, other.loadWindowFrom),
+      loadWindowTo: pick(loadWindowTo, other.loadWindowTo),
+      unloadWindowFrom: pick(unloadWindowFrom, other.unloadWindowFrom),
+      unloadWindowTo: pick(unloadWindowTo, other.unloadWindowTo),
+      distanceKm: distanceKm ?? other.distanceKm,
+      dispatcherName: pick(dispatcherName, other.dispatcherName),
+      dispatcherPhone: pick(dispatcherPhone, other.dispatcherPhone),
+      attorneyNumber: pick(attorneyNumber, other.attorneyNumber),
+      attorneyDate: pick(attorneyDate, other.attorneyDate),
+      attorneyUrl: pick(attorneyUrl, other.attorneyUrl),
     );
   }
 
@@ -429,6 +480,8 @@ class Trip {
     final consignee = shipments
         .map((item) => item.consignee)
         .firstWhere((item) => item.isNotEmpty, orElse: () => '');
+    final dispatcher = jsonMap(trip, ['dispatcher']);
+    final attorney = jsonMap(trip, ['attorney', 'power_of_attorney']);
 
     return Trip(
       id: jsonText(trip, ['id', 'trip_id', 'uuid']),
@@ -466,6 +519,26 @@ class Trip {
       ),
       shipments: shipments,
       stops: stops,
+      loadWindowFrom: jsonText(trip, ['time_load_from', 'load_window_from']),
+      loadWindowTo: jsonText(trip, ['time_load_to', 'load_window_to']),
+      unloadWindowFrom: jsonText(trip, ['time_unload_from', 'unload_window_from']),
+      unloadWindowTo: jsonText(trip, ['time_unload_to', 'unload_window_to']),
+      distanceKm: jsonNumber(trip, ['distance_km', 'distance']),
+      dispatcherName: dispatcher == null
+          ? jsonText(trip, ['dispatcher_name'])
+          : jsonText(dispatcher, ['name', 'full_name']),
+      dispatcherPhone: dispatcher == null
+          ? jsonText(trip, ['dispatcher_phone'])
+          : jsonText(dispatcher, ['phone', 'mobile']),
+      attorneyNumber: attorney == null
+          ? jsonText(trip, ['attorney_number'])
+          : jsonText(attorney, ['number']),
+      attorneyDate: attorney == null
+          ? formatTripDate(trip['attorney_date'])
+          : formatTripDate(attorney['date'] ?? attorney['issued_at']),
+      attorneyUrl: attorney == null
+          ? jsonText(trip, ['attorney_url'])
+          : jsonText(attorney, ['url', 'file_url', 'download_url']),
     );
   }
 
@@ -635,3 +708,120 @@ String _trimNum(num value) {
   if (value == value.roundToDouble()) return '${value.round()}';
   return value.toString();
 }
+
+String formatTimeWindow(String from, String to) {
+  if (from.isEmpty && to.isEmpty) return '';
+  if (from.isNotEmpty && to.isNotEmpty) return '$from–$to';
+  return from.isNotEmpty ? from : to;
+}
+
+DateTime? parseTripDateTime(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return null;
+  final iso = DateTime.tryParse(value);
+  if (iso != null) return iso;
+  final match = RegExp(
+    r'^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2}))?',
+  ).firstMatch(value);
+  if (match == null) return null;
+  return DateTime(
+    int.parse(match.group(3)!),
+    int.parse(match.group(2)!),
+    int.parse(match.group(1)!),
+    int.parse(match.group(4) ?? '0'),
+    int.parse(match.group(5) ?? '0'),
+  );
+}
+
+double? haversineKm(double? lat1, double? lng1, double? lat2, double? lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+  const earth = 6371.0;
+  final dLat = (lat2 - lat1) * math.pi / 180;
+  final dLng = (lng2 - lng1) * math.pi / 180;
+  final sinLat = math.sin(dLat / 2);
+  final sinLng = math.sin(dLng / 2);
+  final h = sinLat * sinLat +
+      math.cos(lat1 * math.pi / 180) *
+          math.cos(lat2 * math.pi / 180) *
+          sinLng *
+          sinLng;
+  return earth * 2 * math.asin(math.sqrt(h.clamp(0.0, 1.0)));
+}
+
+num? tripDistanceKm(Trip trip) {
+  if (trip.distanceKm != null) return trip.distanceKm;
+  return haversineKm(trip.startLat, trip.startLng, trip.finishLat, trip.finishLng);
+}
+
+String formatDistanceKm(num? km) {
+  if (km == null) return '';
+  if (km >= 100) return '${km.round()} км';
+  return '${_trimNum(num.parse(km.toStringAsFixed(1)))} км';
+}
+
+class TripDeadline {
+  final String kind;
+  final DateTime at;
+  final bool late;
+  final Duration delta;
+
+  const TripDeadline({
+    required this.kind,
+    required this.at,
+    required this.late,
+    required this.delta,
+  });
+
+  String get headline {
+    final label = kind == 'unload' ? 'выгрузки' : 'погрузки';
+    if (late) return 'Опаздываете к $label на ${_formatDuration(delta)}';
+    return 'До $label ${_formatDuration(delta)}';
+  }
+}
+
+TripDeadline? tripDeadline(Trip trip, [DateTime? now]) {
+  if (trip.isCompleted) return null;
+  final clock = now ?? DateTime.now();
+  final kind = trip.canStart ? 'load' : 'unload';
+  final raw = trip.canStart ? trip.dateStart : trip.dateEnd;
+  var at = parseTripDateTime(raw);
+  if (at == null && trip.canStart && trip.loadWindowFrom.isNotEmpty) {
+    at = _combineDateAndTime(trip.dateStart, trip.loadWindowFrom);
+  }
+  if (at == null && !trip.canStart && trip.unloadWindowFrom.isNotEmpty) {
+    at = _combineDateAndTime(trip.dateEnd.isNotEmpty ? trip.dateEnd : trip.dateStart, trip.unloadWindowFrom);
+  }
+  if (at == null) return null;
+  final late = clock.isAfter(at);
+  return TripDeadline(
+    kind: kind,
+    at: at,
+    late: late,
+    delta: late ? clock.difference(at) : at.difference(clock),
+  );
+}
+
+DateTime? _combineDateAndTime(String date, String time) {
+  final parsed = parseTripDateTime(date);
+  final parts = time.split(':');
+  if (parts.length < 2) return parsed;
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null || minute == null) return parsed;
+  if (parsed == null) return null;
+  return DateTime(parsed.year, parsed.month, parsed.day, hour, minute);
+}
+
+String _formatDuration(Duration value) {
+  final hours = value.inHours;
+  final minutes = value.inMinutes.remainder(60);
+  if (hours > 48) {
+    final days = (hours / 24).floor();
+    return '$days д ${_formatHours(hours.remainder(24))}';
+  }
+  if (hours > 0) return '$hours ч $minutes мин';
+  if (minutes > 0) return '$minutes мин';
+  return 'меньше минуты';
+}
+
+String _formatHours(int hours) => hours > 0 ? '$hours ч' : '';

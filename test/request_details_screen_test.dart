@@ -13,6 +13,14 @@ void main() {
       from: 'Москва',
       to: 'Санкт-Петербург',
       dateStart: '15.03.2024 10:00',
+      dateEnd: '16.03.2024 18:00',
+      loadWindowFrom: '09:00',
+      loadWindowTo: '12:00',
+      distanceKm: 705,
+      dispatcherName: 'Смирнов Алексей',
+      dispatcherPhone: '+79990001122',
+      attorneyNumber: 'Д-17',
+      attorneyDate: '01.03.2024',
       vehicle: 'А001АА77',
       startAddress: 'г. Москва, ул. Ленина, д. 1',
       finishAddress: 'г. Санкт-Петербург, пр. Невский, д. 1',
@@ -54,6 +62,11 @@ void main() {
     expect(find.text('Груз'), findsOneWidget);
     expect(find.text('Погрузка'), findsOneWidget);
     expect(find.text('Выгрузка'), findsOneWidget);
+    expect(find.textContaining('Опаздываете'), findsOneWidget);
+    expect(find.textContaining('705 км'), findsOneWidget);
+    expect(find.text('Диспетчер'), findsOneWidget);
+    expect(find.text('Доверенность'), findsOneWidget);
+    expect(find.textContaining('окно 09:00–12:00'), findsOneWidget);
     expect(find.text('Отправитель'), findsOneWidget);
     expect(find.text('Получатель'), findsOneWidget);
     expect(find.text('ООО «Грузовик»'), findsOneWidget);

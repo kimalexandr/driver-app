@@ -23,9 +23,11 @@ void main() {
     expect(find.text('Документы'), findsOneWidget);
     expect(find.text('ПАСПОРТ'), findsOneWidget);
     expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsOneWidget);
+    expect(find.text('Повернуть'), findsOneWidget);
+    expect(find.text('Копировать'), findsOneWidget);
     expect(find.text('45 10  123456'), findsOneWidget);
     expect(find.text('12 34 567890'), findsOneWidget);
-    expect(find.text('Выдан'), findsOneWidget);
+    expect(find.text('Дата выдачи'), findsOneWidget);
     expect(find.text('01.03.2015'), findsOneWidget);
     expect(find.text('12.05.2020'), findsOneWidget);
     expect(find.text('ГИБДД, Москва'), findsOneWidget);

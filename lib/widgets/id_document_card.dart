@@ -4,251 +4,381 @@ import 'package:flutter/services.dart';
 import '../models/driver_profile.dart';
 import '../theme/app_theme.dart';
 
+List<String> splitRuName(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+  return parts.toList();
+}
+
+Future<void> copyDocumentText(BuildContext context, String label, String value) async {
+  final text = value.trim();
+  if (text.isEmpty) return;
+  await Clipboard.setData(ClipboardData(text: text));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('$label скопирован')),
+  );
+}
+
 class PassportDocumentCard extends StatelessWidget {
   final DriverPassport passport;
+  final String holderName;
 
-  const PassportDocumentCard({super.key, required this.passport});
-
-  @override
-  Widget build(BuildContext context) {
-    return _IdDocumentCard(
-      kindLabel: 'Паспорт',
-      countryLabel: 'РФ',
-      number: passport.hasContent ? passport.displaySeriesNumber : '',
-      numberCaption: 'Серия и номер',
-      emptyHint: 'Серия и номер не указаны',
-      lines: [
-        if (passport.issueDate.isNotEmpty) _DocLine('Выдан', passport.issueDate),
-      ],
-      colors: const [Color(0xFF6B1D2A), Color(0xFF3D1018)],
-      watermark: Icons.menu_book_outlined,
-      copyValue: passport.seriesNumber,
-    );
-  }
-}
-
-class LicenseDocumentCard extends StatelessWidget {
-  final DriverLicense license;
-
-  const LicenseDocumentCard({super.key, required this.license});
-
-  @override
-  Widget build(BuildContext context) {
-    final place = [
-      license.issuedBy,
-      license.issueCity,
-    ].where((part) => part.isNotEmpty).join(', ');
-    return _IdDocumentCard(
-      kindLabel: 'Водительское удостоверение',
-      countryLabel: 'ВУ',
-      number: license.hasContent ? license.displayNumber : '',
-      numberCaption: 'Номер',
-      emptyHint: 'Номер не указан',
-      lines: [
-        if (license.issueDate.isNotEmpty) _DocLine('Выдано', license.issueDate),
-        if (place.isNotEmpty) _DocLine('Кем', place),
-      ],
-      colors: const [Color(0xFF9A3F5C), Color(0xFF5C2438)],
-      accent: AppColors.orange,
-      watermark: Icons.badge_outlined,
-      copyValue: license.number,
-    );
-  }
-}
-
-class _DocLine {
-  final String label;
-  final String value;
-
-  const _DocLine(this.label, this.value);
-}
-
-class _IdDocumentCard extends StatelessWidget {
-  final String kindLabel;
-  final String countryLabel;
-  final String number;
-  final String numberCaption;
-  final String emptyHint;
-  final List<_DocLine> lines;
-  final List<Color> colors;
-  final Color? accent;
-  final IconData watermark;
-  final String copyValue;
-
-  const _IdDocumentCard({
-    required this.kindLabel,
-    required this.countryLabel,
-    required this.number,
-    required this.numberCaption,
-    required this.emptyHint,
-    required this.lines,
-    required this.colors,
-    required this.watermark,
-    required this.copyValue,
-    this.accent,
+  const PassportDocumentCard({
+    super.key,
+    required this.passport,
+    this.holderName = '',
   });
 
-  Future<void> _copy(BuildContext context) async {
-    final value = copyValue.trim();
-    if (value.isEmpty) return;
-    await Clipboard.setData(ClipboardData(text: value));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$kindLabel скопирован')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final filled = number.isNotEmpty;
+    final names = splitRuName(holderName);
+    final last = names.isNotEmpty ? names.first : '';
+    final first = names.length > 1 ? names[1] : '';
+    final middle = names.length > 2 ? names.sublist(2).join(' ') : '';
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: filled ? () => _copy(context) : null,
-        borderRadius: BorderRadius.circular(20),
+        onTap: () => copyDocumentText(context, 'Паспорт', passport.seriesNumber),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          width: double.infinity,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: colors,
-            ),
-            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFFF3E4E8),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFC9A0A8)),
             boxShadow: [
               BoxShadow(
-                color: colors.last.withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
+                color: const Color(0xFF6B1D2A).withValues(alpha: 0.18),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Stack(
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
               children: [
-                Positioned(
-                  right: -18,
-                  bottom: -22,
-                  child: Icon(
-                    watermark,
-                    size: 140,
-                    color: Colors.white.withValues(alpha: 0.08),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  color: const Color(0xFF8B2C3A),
+                  child: const Text(
+                    'РОССИЙСКАЯ ФЕДЕРАЦИЯ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                    ),
                   ),
                 ),
-                if (accent != null)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 5, color: accent),
-                  ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-                  child: Column(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              countryLabel,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              kindLabel.toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.78),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            filled ? Icons.copy_outlined : Icons.hourglass_empty,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.55),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          filled ? number : emptyHint,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: filled ? 1 : 0.55),
-                            fontSize: filled ? 26 : 16,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: filled ? 1.4 : 0,
-                            height: 1.15,
-                          ),
+                      Container(
+                        width: 78,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7D3D8),
+                          border: Border.all(color: const Color(0xFFB98992)),
                         ),
+                        child: const Icon(Icons.person, size: 42, color: Color(0xFF8B2C3A)),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        numberCaption,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (lines.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        Wrap(
-                          spacing: 20,
-                          runSpacing: 8,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            for (final line in lines)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    line.label,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.5),
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  Text(
-                                    line.value,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                            const Text(
+                              'ПАСПОРТ',
+                              style: TextStyle(
+                                color: Color(0xFF8B2C3A),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1,
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            _field('Фамилия', last),
+                            _field('Имя', first),
+                            _field('Отчество', middle),
+                            _field('Серия и номер', passport.displaySeriesNumber),
+                            _field('Дата выдачи', passport.issueDate),
                           ],
                         ),
-                      ],
+                      ),
                     ],
+                  ),
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  color: const Color(0xFFE8D5DA),
+                  child: Text(
+                    passport.hasContent
+                        ? 'Нажмите, чтобы скопировать номер'
+                        : 'Серия и номер не указаны',
+                    style: const TextStyle(color: AppColors.muted, fontSize: 11),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _field(String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFF8B2C3A), fontSize: 10)),
+          Text(
+            value.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class LicenseDocumentCard extends StatefulWidget {
+  final DriverLicense license;
+  final String holderName;
+
+  const LicenseDocumentCard({
+    super.key,
+    required this.license,
+    this.holderName = '',
+  });
+
+  @override
+  State<LicenseDocumentCard> createState() => _LicenseDocumentCardState();
+}
+
+class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
+  bool _back = false;
+
+  void _flip() => setState(() => _back = !_back);
+
+  Future<void> _copy() {
+    return copyDocumentText(context, 'ВУ', widget.license.number);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final names = splitRuName(widget.holderName);
+    final last = names.isNotEmpty ? names.first : '';
+    final first = names.length > 1 ? names[1] : '';
+    final middle = names.length > 2 ? names.sublist(2).join(' ') : '';
+    final place = [
+      widget.license.issuedBy,
+      widget.license.issueCity,
+    ].where((part) => part.isNotEmpty).join(', ');
+    return Column(
+      children: [
+        GestureDetector(
+          onHorizontalDragEnd: (details) {
+            if ((details.primaryVelocity ?? 0).abs() > 180) _flip();
+          },
+          onTap: _flip,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            transitionBuilder: (child, animation) {
+              final rotate = Tween(begin: 1.0, end: 0.0).animate(animation);
+              return AnimatedBuilder(
+                animation: rotate,
+                child: child,
+                builder: (context, child) {
+                  final angle = (1 - rotate.value) * 3.141592653589793;
+                  return Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..rotateY(_back ? angle : -angle),
+                    child: child,
+                  );
+                },
+              );
+            },
+            child: _back
+                ? _backFace(last, first, middle, place)
+                : _frontFace(last, first, middle, place),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _flip,
+                icon: const Icon(Icons.rotate_right, size: 18),
+                label: const Text('Повернуть'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: widget.license.hasContent ? _copy : null,
+                icon: const Icon(Icons.copy_outlined, size: 18),
+                label: const Text('Копировать'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _frontFace(String last, String first, String middle, String place) {
+    return _plastic(
+      key: const ValueKey('vu-front'),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E4B9C),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'RUS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ',
+                        maxLines: 2,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _vuLine('1, 2', [last, first, middle].where((part) => part.isNotEmpty).join(' ')),
+                _vuLine('4a–4b', widget.license.issueDate),
+                _vuLine('5', widget.license.displayNumber),
+                _vuLine('8', place),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 72,
+            height: 92,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8DDE1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFC9B4BA)),
+            ),
+            child: const Icon(Icons.badge_outlined, color: Color(0xFF8B3A5A), size: 36),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _backFace(String last, String first, String middle, String place) {
+    return _plastic(
+      key: const ValueKey('vu-back'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ОБОРОТ',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF8B3A5A),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _vuLine('Номер', widget.license.displayNumber),
+          _vuLine('Выдано', widget.license.issueDate),
+          _vuLine('Кем', place),
+          _vuLine('Владелец', [last, first, middle].where((part) => part.isNotEmpty).join(' ')),
+          const Spacer(),
+          const Text(
+            'Смахните или нажмите «Повернуть»',
+            style: TextStyle(color: AppColors.muted, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _plastic({required Key key, required Widget child}) {
+    return Container(
+      key: key,
+      width: double.infinity,
+      height: 168,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF7F4), Color(0xFFF3D5DC)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD7A8B4)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF8B3A5A).withValues(alpha: 0.18),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _vuLine(String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: AppColors.navy, fontSize: 13, height: 1.25),
+          children: [
+            TextSpan(
+              text: '$label  ',
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ],
         ),
       ),
     );

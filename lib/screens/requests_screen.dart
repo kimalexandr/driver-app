@@ -8,6 +8,7 @@ import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/trip_deadline_banner.dart';
 import 'driver_profile_screen.dart';
 import 'request_details_screen.dart';
 
@@ -238,9 +239,15 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Expanded(
-                                  child: Text(
-                                    trip.dateRange,
-                                    style: const TextStyle(color: AppColors.muted),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        trip.dateRange,
+                                        style: const TextStyle(color: AppColors.muted),
+                                      ),
+                                      TripDeadlineBanner(trip: trip, compact: true),
+                                    ],
                                   ),
                                 ),
                                 TextButton.icon(

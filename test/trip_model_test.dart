@@ -175,4 +175,29 @@ void main() {
     expect(trip.stops.length, 2);
     expect(formatUnits(12, 'пал'), '12 пал');
   });
+
+  test('считает опоздание и расстояние', () {
+    const trip = Trip(
+      id: '1',
+      number: '1',
+      status: 'assigned',
+      statusLabel: 'Назначен',
+      from: 'Москва',
+      to: 'Тула',
+      dateStart: '15.03.2024 10:00',
+      dateEnd: '16.03.2024 18:00',
+      loadWindowFrom: '09:00',
+      loadWindowTo: '12:00',
+      startLat: 55.75,
+      startLng: 37.61,
+      finishLat: 54.19,
+      finishLng: 37.61,
+    );
+    final deadline = tripDeadline(trip, DateTime(2026, 9, 13, 12));
+    expect(deadline, isNotNull);
+    expect(deadline!.late, isTrue);
+    expect(deadline.headline, contains('погрузк'));
+    expect(trip.loadWindowLabel, '09:00–12:00');
+    expect(tripDistanceKm(trip), greaterThan(100));
+  });
 }
