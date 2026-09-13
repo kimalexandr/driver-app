@@ -39,7 +39,7 @@ class PepCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.navy.withOpacity(0.28),
+            color: AppColors.navy.withValues(alpha: 0.28),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -53,7 +53,7 @@ class PepCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.14),
+                  color: Colors.white.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
@@ -71,7 +71,7 @@ class PepCard extends StatelessWidget {
                 child: Text(
                   issued ? 'Подпись на этом телефоне' : 'Подпись ещё не выпущена',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -98,7 +98,7 @@ class PepCard extends StatelessWidget {
                 ? 'Выпущена ${record!.issuedLabel} · ${record!.issuedVia.title}'
                 : 'Ключ создаётся на устройстве и не уходит в облако. Им можно подтверждать приём и сдачу груза.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               height: 1.35,
             ),
           ),
@@ -170,13 +170,13 @@ class PepCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: on ? const Color(0xFF2F7D4F) : Colors.white.withOpacity(0.1),
+        color: on ? const Color(0xFF2F7D4F) : Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         on ? '$label · связан' : label,
         style: TextStyle(
-          color: Colors.white.withOpacity(on ? 1 : 0.7),
+          color: Colors.white.withValues(alpha: on ? 1 : 0.7),
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),

@@ -117,7 +117,7 @@ class _IdDocumentCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: colors.last.withOpacity(0.35),
+                color: colors.last.withValues(alpha: 0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -133,7 +133,7 @@ class _IdDocumentCard extends StatelessWidget {
                   child: Icon(
                     watermark,
                     size: 140,
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                   ),
                 ),
                 if (accent != null)
@@ -156,7 +156,7 @@ class _IdDocumentCard extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.14),
+                              color: Colors.white.withValues(alpha: 0.14),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -176,7 +176,7 @@ class _IdDocumentCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.78),
+                                color: Colors.white.withValues(alpha: 0.78),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.8,
@@ -186,7 +186,7 @@ class _IdDocumentCard extends StatelessWidget {
                           Icon(
                             filled ? Icons.copy_outlined : Icons.hourglass_empty,
                             size: 16,
-                            color: Colors.white.withOpacity(0.55),
+                            color: Colors.white.withValues(alpha: 0.55),
                           ),
                         ],
                       ),
@@ -197,7 +197,7 @@ class _IdDocumentCard extends StatelessWidget {
                         child: Text(
                           filled ? number : emptyHint,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(filled ? 1 : 0.55),
+                            color: Colors.white.withValues(alpha: filled ? 1 : 0.55),
                             fontSize: filled ? 26 : 16,
                             fontWeight: FontWeight.w800,
                             letterSpacing: filled ? 1.4 : 0,
@@ -209,7 +209,7 @@ class _IdDocumentCard extends StatelessWidget {
                       Text(
                         numberCaption,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.55),
+                          color: Colors.white.withValues(alpha: 0.55),
                           fontSize: 12,
                         ),
                       ),
@@ -226,7 +226,7 @@ class _IdDocumentCard extends StatelessWidget {
                                   Text(
                                     line.label,
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.5),
+                                      color: Colors.white.withValues(alpha: 0.5),
                                       fontSize: 11,
                                     ),
                                   ),

@@ -42,7 +42,7 @@ class RuLicensePlateBadge extends StatelessWidget {
           border: Border.all(color: const Color(0xFF1A1A1A), width: compact ? 1.6 : 2.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.18),
+              color: Colors.black.withValues(alpha: 0.18),
               blurRadius: compact ? 4 : 8,
               offset: Offset(0, compact ? 1 : 2),
             ),
