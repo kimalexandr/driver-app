@@ -193,29 +193,9 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
             if ((details.primaryVelocity ?? 0).abs() > 180) _flip();
           },
           onTap: _flip,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            transitionBuilder: (child, animation) {
-              final rotate = Tween(begin: 1.0, end: 0.0).animate(animation);
-              return AnimatedBuilder(
-                animation: rotate,
-                child: child,
-                builder: (context, child) {
-                  final angle = (1 - rotate.value) * 3.141592653589793;
-                  return Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.001)
-                      ..rotateY(_back ? angle : -angle),
-                    child: child,
-                  );
-                },
-              );
-            },
-            child: _back
-                ? _backFace(last, first, middle, place)
-                : _frontFace(last, first, middle, place),
-          ),
+          child: _back
+              ? _backFace(last, first, middle, place)
+              : _frontFace(last, first, middle, place),
         ),
         const SizedBox(height: 8),
         Row(
@@ -247,52 +227,43 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
       child: Row(
         children: [
           Expanded(
-            child: FittedBox(
-              alignment: Alignment.topLeft,
-              fit: BoxFit.scaleDown,
-              child: Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E4B9C),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'RUS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ',
-                        maxLines: 2,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                    letterSpacing: 0.3,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E4B9C),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'RUS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 _vuLine('1, 2', [last, first, middle].where((part) => part.isNotEmpty).join(' ')),
                 _vuLine('4a–4b', widget.license.issueDate),
                 _vuLine('5', widget.license.displayNumber),
                 _vuLine('8', place),
               ],
-            ),
             ),
           ),
           const SizedBox(width: 10),
@@ -315,6 +286,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
     return _plastic(
       key: const ValueKey('vu-back'),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
@@ -331,11 +303,6 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
           _vuLine('Выдано', widget.license.issueDate),
           _vuLine('Кем', place),
           _vuLine('Владелец', [last, first, middle].where((part) => part.isNotEmpty).join(' ')),
-          const Spacer(),
-          const Text(
-            'Смахните или нажмите «Повернуть»',
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
-          ),
         ],
       ),
     );
@@ -345,7 +312,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
     return Container(
       key: key,
       width: double.infinity,
-      height: 176,
+      constraints: const BoxConstraints(minHeight: 160),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -370,20 +337,15 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
   Widget _vuLine(String label, String value) {
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: AppColors.navy, fontSize: 13, height: 1.25),
-          children: [
-            TextSpan(
-              text: '$label  ',
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-            TextSpan(
-              text: value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        '$label  $value',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.navy,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

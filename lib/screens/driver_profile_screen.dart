@@ -215,9 +215,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               top: false,
-              child: ListView(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-                children: [
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   _identity(driver),
                   if (_error != null)
                     Padding(
@@ -275,6 +277,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     ),
                   ),
                 ],
+                ),
               ),
             ),
     );
