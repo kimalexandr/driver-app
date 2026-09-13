@@ -20,7 +20,7 @@ class RuLicensePlateBadge extends StatelessWidget {
     if (number.trim().isEmpty) return const SizedBox.shrink();
 
     final compact = size == RuLicensePlateSize.compact;
-    final height = compact ? 32.0 : 48.0;
+    final height = compact ? 36.0 : 48.0;
     final radius = compact ? 4.0 : 6.0;
     final letterSize = compact ? 15.0 : 22.0;
     final digitSize = compact ? 18.0 : 26.0;
@@ -76,35 +76,38 @@ class RuLicensePlateBadge extends StatelessWidget {
                   bottomRight: Radius.circular(radius - 1),
                 ),
               ),
-              padding: EdgeInsets.symmetric(vertical: compact ? 2 : 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _RusFlag(width: flagW, height: flagH),
-                  SizedBox(height: compact ? 1 : 2),
-                  Text(
-                    'RUS',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: rusSize,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  if (plate.parsed) ...[
+              padding: EdgeInsets.symmetric(vertical: compact ? 1 : 3),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _RusFlag(width: flagW, height: flagH),
                     SizedBox(height: compact ? 1 : 2),
                     Text(
-                      plate.region,
+                      'RUS',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: regionSize,
-                        fontWeight: FontWeight.w900,
+                        fontSize: rusSize,
+                        fontWeight: FontWeight.w800,
                         height: 1,
+                        letterSpacing: 0.4,
                       ),
                     ),
+                    if (plate.parsed) ...[
+                      SizedBox(height: compact ? 1 : 2),
+                      Text(
+                        plate.region,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: regionSize,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ],

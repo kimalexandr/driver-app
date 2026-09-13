@@ -8,6 +8,8 @@ import 'package:phone_auth_app/widgets/ru_license_plate.dart';
 
 void main() {
   testWidgets('профиль показывает паспорт и ВУ карточками', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 1800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(MaterialApp(
       home: DriverProfileScreen(
         api: MockDriverApi(),
