@@ -9,6 +9,7 @@ import 'package:phone_auth_app/api/driver_api.dart';
 import 'package:phone_auth_app/api/mock_driver_api.dart';
 import 'package:phone_auth_app/api/service_login.dart';
 import 'package:phone_auth_app/api/token_store.dart';
+import 'package:phone_auth_app/models/external_auth.dart';
 import 'package:phone_auth_app/services/phone.dart';
 
 void main() {
@@ -38,6 +39,18 @@ void main() {
     final session = await api.verifyCode(phone: '79991234567', code: '1111');
     expect(session.accessToken, isNotEmpty);
     expect(session.driver.name, isNotEmpty);
+  });
+
+  test('mock пускает через Госуслуги', () async {
+    final api = MockDriverApi(tokenStore: MemoryTokenStore());
+    final start = await api.startExternalAuth(AuthProviderKind.gosuslugi);
+    expect(start.demo, isTrue);
+    final session = await api.completeExternalAuth(
+      provider: start.provider,
+      code: start.demoCode ?? 'demo',
+      state: start.state,
+    );
+    expect(session.accessToken, isNotEmpty);
   });
 
   test('HTTP клиент читает message из 422', () async {

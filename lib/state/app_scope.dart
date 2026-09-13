@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../api/driver_api.dart';
 import '../api/token_store.dart';
 import '../services/location_service.dart';
+import '../services/pep_vault.dart';
 import '../services/trip_location_tracker.dart';
 import 'auth_controller.dart';
 
@@ -12,6 +13,7 @@ class AppScope extends InheritedNotifier<AuthController> {
   final TokenStore tokenStore;
   final LocationService locationService;
   final TripLocationTracker locationTracker;
+  final PepVault pep;
 
   const AppScope({
     super.key,
@@ -19,6 +21,7 @@ class AppScope extends InheritedNotifier<AuthController> {
     required this.tokenStore,
     required this.locationService,
     required this.locationTracker,
+    required this.pep,
     required AuthController auth,
     required super.child,
   }) : super(notifier: auth);
@@ -43,6 +46,7 @@ class AppDependencies {
   final AuthController auth;
   final LocationService locationService;
   final TripLocationTracker locationTracker;
+  final PepVault pep;
 
   AppDependencies._({
     required this.tokenStore,
@@ -51,6 +55,7 @@ class AppDependencies {
     required this.auth,
     required this.locationService,
     required this.locationTracker,
+    required this.pep,
   });
 
   factory AppDependencies({
@@ -58,6 +63,7 @@ class AppDependencies {
     DriverApi? api,
     ApiClient? client,
     LocationService? locationService,
+    PepVault? pep,
   }) {
     final store = tokenStore ?? SecureTokenStore();
     final resolvedClient = client ?? ApiClient(tokenStore: store);
@@ -76,6 +82,7 @@ class AppDependencies {
       auth: auth,
       locationService: resolvedLocation,
       locationTracker: tracker,
+      pep: pep ?? PepVault(),
     );
   }
 }

@@ -38,10 +38,12 @@ void main() {
     expect(driver.name, 'Иванов Иван Иванович');
     expect(driver.phone, '79001234567');
     expect(driver.license.number, '1234567890');
+    expect(driver.license.displayNumber, '12 34 567890');
     expect(driver.license.issueDate, '12.05.2020');
     expect(driver.license.issuedBy, 'ГИБДД');
     expect(driver.license.issueCity, 'Москва');
     expect(driver.passport.seriesNumber, '4510 123456');
+    expect(driver.passport.displaySeriesNumber, '45 10  123456');
     expect(driver.passport.issueDate, '01.03.2015');
     expect(driver.auto?.stateNumber, 'А123ВС77');
     expect(driver.auto?.brand, 'Volvo');
@@ -116,5 +118,12 @@ void main() {
     expect(driver.email, 'driver@7rights.ru');
     expect(driver.license.number, '99 00 123456');
     expect(driver.carrierName, 'ООО Перевозчик');
+  });
+
+  test('форматирует номер паспорта и ВУ как на документе', () {
+    expect(formatRuLicenseNumber('1234567890'), '12 34 567890');
+    expect(formatRuLicenseNumber('12 34 567890'), '12 34 567890');
+    expect(formatRuPassportNumber('4510', '123456'), '45 10  123456');
+    expect(formatRuPassportNumber('', '4510 123456'), '45 10  123456');
   });
 }

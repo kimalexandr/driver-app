@@ -28,7 +28,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Рейс №001'), findsOneWidget);
-    expect(find.text('Откуда'), findsOneWidget);
+    expect(find.text('Задача'), findsOneWidget);
+    expect(find.text('Погрузка'), findsOneWidget);
   });
 
   testWidgets('RequestsScreen shows completed trips on second tab', (tester) async {

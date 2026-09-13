@@ -80,6 +80,7 @@ class _DriverAppState extends State<DriverApp> {
       tokenStore: widget.dependencies.tokenStore,
       locationService: widget.dependencies.locationService,
       locationTracker: widget.dependencies.locationTracker,
+      pep: widget.dependencies.pep,
       auth: _auth,
       child: MaterialApp(
         navigatorKey: _navigatorKey,

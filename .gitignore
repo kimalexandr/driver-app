@@ -47,6 +47,9 @@ app.*.map.json
 /android/key.properties
 /android/*.jks
 /android/*.keystore
+/android/pepk.jar
+/android/*.pem
+/android/pepk_out.zip
 /.tools/
 
 # Web related

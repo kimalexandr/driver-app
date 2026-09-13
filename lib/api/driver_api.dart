@@ -1,6 +1,8 @@
 import '../models/auth_session.dart';
 import '../models/driver_profile.dart';
+import '../models/external_auth.dart';
 import '../models/json_fields.dart';
+import '../models/pep.dart';
 import '../models/trip.dart';
 import 'api_client.dart';
 import 'api_exception.dart';
@@ -12,6 +14,16 @@ abstract class DriverApi {
     required String phone,
     required String code,
   });
+
+  Future<ExternalAuthStart> startExternalAuth(AuthProviderKind provider);
+
+  Future<AuthSession> completeExternalAuth({
+    required String provider,
+    required String code,
+    required String state,
+  });
+
+  Future<void> registerPep(PepRecord record);
 
   Future<DriverProfile> me();
 
@@ -81,6 +93,57 @@ class HttpDriverApi implements DriverApi {
       tokenType: session.tokenType,
       driver: driver,
     );
+  }
+
+  @override
+  Future<ExternalAuthStart> startExternalAuth(AuthProviderKind provider) async {
+    try {
+      final json = await client.post(
+        '/auth/external/start',
+        body: {'provider': provider.id},
+        auth: false,
+      );
+      return ExternalAuthStart.fromJson(unwrapJson(json));
+    } on ApiException catch (error) {
+      if (error.statusCode == 404 || error.statusCode == 501) {
+        return ExternalAuthStart(
+          provider: provider.id,
+          state: 'pending-esia',
+          authorizeUrl: provider == AuthProviderKind.goskey
+              ? OfficialAuthLinks.goskey
+              : OfficialAuthLinks.gosuslugi,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<AuthSession> completeExternalAuth({
+    required String provider,
+    required String code,
+    required String state,
+  }) async {
+    final json = await client.post(
+      '/auth/external/complete',
+      body: {'provider': provider, 'code': code, 'state': state},
+      auth: false,
+    );
+    final session = AuthSession.fromJson(json);
+    await client.tokenStore.saveAccessToken(session.accessToken);
+    return session;
+  }
+
+  @override
+  Future<void> registerPep(PepRecord record) async {
+    try {
+      await client.post('/me/pep', body: record.toJson());
+    } on ApiException catch (error) {
+      if (error.statusCode == 404 || error.statusCode == 501) {
+        return;
+      }
+      rethrow;
+    }
   }
 
   @override

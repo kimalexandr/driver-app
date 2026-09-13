@@ -1,5 +1,7 @@
 import '../models/auth_session.dart';
 import '../models/driver_profile.dart';
+import '../models/external_auth.dart';
+import '../models/pep.dart';
 import '../models/trip.dart';
 import 'api_exception.dart';
 import 'driver_api.dart';
@@ -18,7 +20,17 @@ class MockDriverApi implements DriverApi {
     name: 'Иванов Иван Иванович',
     phone: '79991234567',
     carrierName: 'ООО Перевозчик',
-    license: DriverLicense(number: '1234567890', issueDate: '12.05.2020'),
+    license: DriverLicense(
+      number: '1234567890',
+      issueDate: '12.05.2020',
+      issuedBy: 'ГИБДД',
+      issueCity: 'Москва',
+    ),
+    passport: DriverPassport(
+      series: '4510',
+      number: '123456',
+      issueDate: '01.03.2015',
+    ),
     auto: DriverAuto(
       id: '10',
       stateNumber: 'А123ВС77',
@@ -139,7 +151,11 @@ class MockDriverApi implements DriverApi {
       id: _driver.id,
       name: _driver.name,
       phone: phone,
+      phoneSecondary: _driver.phoneSecondary,
+      email: _driver.email,
+      carrierName: _driver.carrierName,
       license: _driver.license,
+      passport: _driver.passport,
       auto: _driver.auto,
     );
     await tokenStore?.saveAccessToken('mock-access-token');
@@ -149,6 +165,33 @@ class MockDriverApi implements DriverApi {
       driver: _driver,
     );
   }
+
+  @override
+  Future<ExternalAuthStart> startExternalAuth(AuthProviderKind provider) async {
+    return ExternalAuthStart(
+      provider: provider.id,
+      state: 'mock-${provider.id}',
+      demo: true,
+      demoCode: 'demo',
+    );
+  }
+
+  @override
+  Future<AuthSession> completeExternalAuth({
+    required String provider,
+    required String code,
+    required String state,
+  }) async {
+    await tokenStore?.saveAccessToken('mock-access-token');
+    return AuthSession(
+      accessToken: 'mock-access-token',
+      tokenType: 'Bearer',
+      driver: _driver,
+    );
+  }
+
+  @override
+  Future<void> registerPep(PepRecord record) async {}
 
   @override
   Future<DriverProfile> me() async => _driver;

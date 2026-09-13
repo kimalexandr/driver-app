@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../api/api_exception.dart';
 import '../api/service_login.dart';
 import '../models/auth_session.dart';
+import '../models/external_auth.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 
@@ -61,6 +62,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
           debugCode: challenge.debugCode,
         ),
       );
+      await scope.pep.linkProvider(AuthProviderKind.sms);
       await scope.auth.applySession(session);
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/trips', (route) => false);

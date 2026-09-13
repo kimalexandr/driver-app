@@ -9,6 +9,7 @@ import '../services/location_service.dart';
 import '../services/yandex_maps.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
@@ -162,106 +163,112 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                  Row(
-                    children: [
-                      StatusChip(status: _trip.status, label: _trip.statusLabel),
-                      const Spacer(),
-                      if (_trip.vehicle.isNotEmpty)
-                        Text(
-                          'Рейс · ${_trip.vehicle}',
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
+            Row(
+              children: [
+                StatusChip(status: _trip.status, label: _trip.statusLabel),
+                const Spacer(),
+                if (_trip.dateRange.isNotEmpty)
+                  Text(
+                    _trip.dateRange,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  const SizedBox(height: 18),
-                  _autoCard(),
-                  _routeCard(),
-                  if (_trip.comment.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _card(
-                      title: 'Комментарий рейса',
-                      child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
-                    ),
-                  ],
-                  if (_trip.cargoLabel.isNotEmpty ||
-                      _trip.totalWeightKg != null ||
-                      _trip.totalVolumeM3 != null) ...[
-                    const SizedBox(height: 16),
-                    _card(
-                      title: 'Товар',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_trip.cargoLabel.isNotEmpty)
-                            Text(
-                              _trip.cargoLabel,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              if (_trip.totalWeightKg != null)
-                                _metric(Icons.scale, formatKg(_trip.totalWeightKg)),
-                              if (_trip.totalVolumeM3 != null)
-                                _metric(Icons.inventory_2_outlined, formatM3(_trip.totalVolumeM3)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (_trip.sender.name.isNotEmpty || _trip.sender.phone.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _partyCard('Отправитель', _trip.sender),
-                  ],
-                  if (_trip.recipient.name.isNotEmpty ||
-                      _trip.recipient.phone.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _partyCard('Получатель', _trip.recipient),
-                  ],
-                  if (_trip.shipments.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _card(
-                      title: 'Грузы',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (var i = 0; i < _trip.shipments.length; i++) ...[
-                            if (i > 0) const Divider(height: 20),
-                            _shipmentRow(_trip.shipments[i]),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (_trip.stops.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _card(
-                      title: 'Точки маршрута',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (var i = 0; i < _trip.stops.length; i++) ...[
-                            if (i > 0) const Divider(height: 20),
-                            _stopRow(_trip.stops[i]),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+              ],
+            ),
+            const SizedBox(height: 18),
+            _autoCard(),
+            _taskCard(),
+            if (_showTripComment) ...[
+              const SizedBox(height: 16),
+              _card(
+                title: 'Комментарий рейса',
+                child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
+              ),
+            ],
+            if (_hasCargoBlock) ...[
+              const SizedBox(height: 16),
+              _cargoCard(),
+            ],
+            if (_showSender) ...[
+              const SizedBox(height: 16),
+              _partyCard('Отправитель', _trip.sender, hideCompany: _trip.startCompany, hideAddress: _trip.startAddress),
+            ],
+            if (_showRecipient) ...[
+              const SizedBox(height: 16),
+              _partyCard(
+                'Получатель',
+                _trip.recipient,
+                hideCompany: _trip.finishCompany,
+                hideAddress: _trip.finishAddress,
+              ),
+            ],
+          ],
         ),
       ),
       bottomNavigationBar: _actions(),
     );
+  }
+
+  bool _same(String a, String b) {
+    final left = a.trim().toLowerCase();
+    final right = b.trim().toLowerCase();
+    return left.isNotEmpty && left == right;
+  }
+
+  bool get _showTripComment {
+    if (_trip.comment.isEmpty) return false;
+    return !_same(_trip.comment, _trip.startComment) &&
+        !_same(_trip.comment, _trip.finishComment);
+  }
+
+  bool get _showSender =>
+      _trip.sender.name.isNotEmpty || _trip.sender.phone.isNotEmpty;
+
+  bool get _showRecipient =>
+      _trip.recipient.name.isNotEmpty || _trip.recipient.phone.isNotEmpty;
+
+  bool get _hasCargoBlock =>
+      _trip.shipments.isNotEmpty ||
+      _trip.cargo.isNotEmpty ||
+      _trip.totalWeightKg != null ||
+      _trip.totalVolumeM3 != null;
+
+  bool get _cargoNameAddsInfo {
+    if (_trip.cargo.isEmpty) return false;
+    final names = _trip.shipments
+        .map((item) => item.title)
+        .where((item) => item.isNotEmpty)
+        .join(', ');
+    return names.isEmpty || !_same(_trip.cargo, names);
+  }
+
+  bool _shipmentRouteRepeatsTrip(Shipment item) {
+    if (!item.hasRoute) return true;
+    final fromKnown = item.from.isEmpty && item.fromAddress.isEmpty ||
+        _same(item.from, _trip.from) ||
+        _same(item.fromAddress, _trip.startAddress);
+    final toKnown = item.to.isEmpty && item.toAddress.isEmpty ||
+        _same(item.to, _trip.to) ||
+        _same(item.toAddress, _trip.finishAddress);
+    return fromKnown && toKnown;
+  }
+
+  bool _loadOpsOnStops(Shipment item) {
+    return _trip.stops.any((stop) => stop.isLoad && (
+          (item.loadQueue.isNotEmpty && _same(stop.queue, item.loadQueue)) ||
+          (item.loadGate.number.isNotEmpty &&
+              _same(stop.gate.number, item.loadGate.number))
+        ));
+  }
+
+  bool _unloadOpsOnStops(Shipment item) {
+    return _trip.stops.any((stop) => stop.isUnload && (
+          (item.unloadQueue.isNotEmpty && _same(stop.queue, item.unloadQueue)) ||
+          (item.unloadGate.number.isNotEmpty &&
+              _same(stop.gate.number, item.unloadGate.number))
+        ));
   }
 
   Widget _autoCard() {
@@ -274,10 +281,15 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              auto.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
+            if (auto.stateNumber.isNotEmpty)
+              RuLicensePlateBadge(number: auto.stateNumber),
+            if ([auto.brand, auto.model].any((part) => part.isNotEmpty)) ...[
+              if (auto.stateNumber.isNotEmpty) const SizedBox(height: 10),
+              Text(
+                [auto.brand, auto.model].where((part) => part.isNotEmpty).join(' '),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
             if (auto.bodyType.isNotEmpty || auto.color.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
@@ -293,103 +305,143 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
+  Widget _taskCard() {
+    return _card(
+      title: 'Задача',
+      child: _trip.stops.isNotEmpty ? _stopsTimeline() : _routeTimeline(),
+    );
+  }
+
+  Widget _routeTimeline() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _point(
+          icon: Icons.trip_origin,
+          title: 'Погрузка',
+          city: _trip.from,
+          company: _trip.startCompany,
+          address: _trip.startAddress,
+          comment: _trip.startComment,
+          onTap: () => _openPlace(
+            address: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
+            lat: _trip.startLat,
+            lng: _trip.startLng,
+          ),
+        ),
+        _routeLine(),
+        _point(
+          icon: Icons.flag_outlined,
+          title: 'Выгрузка',
+          city: _trip.to,
+          company: _trip.finishCompany,
+          address: _trip.finishAddress,
+          comment: _trip.finishComment,
+          onTap: () => _openPlace(
+            address: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
+            lat: _trip.finishLat,
+            lng: _trip.finishLng,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stopsTimeline() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < _trip.stops.length; i++) ...[
+          if (i > 0) _routeLine(),
+          _stopRow(_trip.stops[i]),
+        ],
+      ],
+    );
+  }
+
+  Widget _routeLine() {
+    return Container(
+      margin: const EdgeInsets.only(left: 11, top: 4, bottom: 4),
+      height: 18,
+      width: 2,
+      color: AppColors.line,
+    );
+  }
+
   Widget _stopRow(TripStop stop) {
     final kind = stop.isLoad ? 'Погрузка' : (stop.isUnload ? 'Выгрузка' : stop.type);
-    return InkWell(
+    final company = stop.isLoad
+        ? _trip.startCompany
+        : (stop.isUnload ? _trip.finishCompany : '');
+    final comment = stop.comment.isNotEmpty
+        ? stop.comment
+        : (stop.isLoad
+            ? _trip.startComment
+            : (stop.isUnload ? _trip.finishComment : ''));
+    final showCargo = stop.cargoName.isNotEmpty &&
+        !_same(stop.cargoName, _trip.cargo) &&
+        !_trip.shipments.any((item) => _same(item.title, stop.cargoName));
+    return _point(
+      icon: stop.isUnload ? Icons.flag_outlined : Icons.trip_origin,
+      title: kind,
+      city: stop.title.isNotEmpty ? stop.title : _cityFromStop(stop),
+      company: company,
+      address: stop.address.isNotEmpty && !_same(stop.address, stop.title)
+          ? stop.address
+          : '',
+      comment: [
+        if (stop.queue.isNotEmpty) 'очередь ${stop.queue}',
+        if (stop.gate.number.isNotEmpty) 'ворота ${stop.gate.number}',
+        if (stop.gate.comment.isNotEmpty) stop.gate.comment,
+        if (showCargo) stop.cargoName,
+        if (comment.isNotEmpty) comment,
+      ].join(' · '),
       onTap: () => _openPlace(
         address: stop.address.isNotEmpty ? stop.address : stop.title,
         lat: stop.lat,
         lng: stop.lng,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(kind, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          const SizedBox(height: 4),
-          Text(
-            stop.title.isNotEmpty ? stop.title : stop.address,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          if (stop.address.isNotEmpty && stop.address != stop.title) ...[
-            const SizedBox(height: 2),
-            Text(
-              stop.address,
-              style: const TextStyle(
-                color: AppColors.ink,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ],
-          if (stop.queue.isNotEmpty || stop.gate.hasContent) ...[
-            const SizedBox(height: 6),
-            Text(
-              [
-                if (stop.queue.isNotEmpty) 'очередь ${stop.queue}',
-                if (stop.gate.number.isNotEmpty) 'ворота ${stop.gate.number}',
-              ].join(' · '),
-              style: const TextStyle(color: AppColors.muted),
-            ),
-          ],
-          if (stop.cargoName.isNotEmpty)
-            Text(stop.cargoName, style: const TextStyle(color: AppColors.ink)),
-          if (stop.comment.isNotEmpty)
-            Text(stop.comment, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-        ],
-      ),
     );
   }
 
-  Widget _routeCard() {
+  String _cityFromStop(TripStop stop) {
+    if (stop.isLoad && _trip.from.isNotEmpty) return _trip.from;
+    if (stop.isUnload && _trip.to.isNotEmpty) return _trip.to;
+    return stop.address;
+  }
+
+  Widget _cargoCard() {
+    final leftoverWeight = _trip.totalWeightKg != null &&
+        _trip.shipments.every((item) => item.weightKg == null);
+    final leftoverVolume = _trip.totalVolumeM3 != null &&
+        _trip.shipments.every((item) => item.volumeM3 == null);
     return _card(
+      title: 'Груз',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _point(
-            icon: Icons.trip_origin,
-            title: 'Откуда',
-            city: _trip.from,
-            company: _trip.startCompany,
-            address: _trip.startAddress,
-            comment: _trip.startComment,
-            onTap: () => _openPlace(
-              address: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
-              lat: _trip.startLat,
-              lng: _trip.startLng,
+          if (_cargoNameAddsInfo)
+            Text(
+              _trip.cargo,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-          ),
-          Container(
-            margin: const EdgeInsets.only(left: 11, top: 4, bottom: 4),
-            height: 18,
-            width: 2,
-            color: AppColors.line,
-          ),
-          _point(
-            icon: Icons.flag_outlined,
-            title: 'Куда',
-            city: _trip.to,
-            company: _trip.finishCompany,
-            address: _trip.finishAddress,
-            comment: _trip.finishComment,
-            onTap: () => _openPlace(
-              address: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
-              lat: _trip.finishLat,
-              lng: _trip.finishLng,
-            ),
-          ),
-          if (_trip.dateRange.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Row(
+          if (leftoverWeight || leftoverVolume) ...[
+            if (_cargoNameAddsInfo) const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                const Icon(Icons.schedule, size: 16, color: AppColors.muted),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    _trip.dateRange,
-                    style: const TextStyle(color: AppColors.muted),
-                  ),
-                ),
+                if (leftoverWeight)
+                  _metric(Icons.scale, formatKg(_trip.totalWeightKg)),
+                if (leftoverVolume)
+                  _metric(Icons.inventory_2_outlined, formatM3(_trip.totalVolumeM3)),
               ],
             ),
+          ],
+          for (var i = 0; i < _trip.shipments.length; i++) ...[
+            if (i > 0 || _cargoNameAddsInfo || leftoverWeight || leftoverVolume)
+              const Divider(height: 20),
+            _shipmentRow(_trip.shipments[i]),
           ],
         ],
       ),
@@ -500,18 +552,24 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
-  Widget _partyCard(String title, Party party) {
+  Widget _partyCard(
+    String title,
+    Party party, {
+    String hideCompany = '',
+    String hideAddress = '',
+  }) {
+    final company = _same(party.company, hideCompany) ? '' : party.company;
+    final address = _same(party.address, hideAddress) ? '' : party.address;
     return _card(
       title: title,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (party.company.isNotEmpty)
-            _infoLine('Компания', party.company),
+          if (company.isNotEmpty) _infoLine('Компания', company),
           if (party.name.isNotEmpty) _infoLine('Контакт', party.name),
           if (party.phone.isNotEmpty)
             _infoLine('Телефон', party.phone, onTap: () => _call(party.phone)),
-          if (party.address.isNotEmpty) _infoLine('Адрес', party.address),
+          if (address.isNotEmpty) _infoLine('Адрес', address),
           if (party.comment.isNotEmpty) _infoLine('Комментарий', party.comment),
         ],
       ),
@@ -548,6 +606,21 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       item.dateStart,
       if (item.dateEnd.isNotEmpty && item.dateEnd != item.dateStart) item.dateEnd,
     ].where((value) => value.isNotEmpty).join(' — ');
+    final showRoute = !_shipmentRouteRepeatsTrip(item);
+    final showConsignee = item.consignee.isNotEmpty &&
+        !_same(item.consignee, _trip.recipient.name) &&
+        !_same(item.consignee, _trip.recipient.company) &&
+        !_same(item.consignee, _trip.finishCompany);
+    final showLoadOps = (item.loadQueue.isNotEmpty || item.loadGate.hasContent) &&
+        !_loadOpsOnStops(item);
+    final showUnloadOps =
+        (item.unloadQueue.isNotEmpty || item.unloadGate.hasContent) &&
+            !_unloadOpsOnStops(item);
+    final showLoadComment = item.loadComment.isNotEmpty &&
+        !_same(item.loadComment, _trip.startComment);
+    final showUnloadComment = item.unloadComment.isNotEmpty &&
+        !_same(item.unloadComment, _trip.finishComment);
+    final showDates = dates.isNotEmpty && !_same(dates, _trip.dateRange);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -563,7 +636,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               Text(item.status, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
           ],
         ),
-        if (item.hasRoute) ...[
+        if (showRoute) ...[
           const SizedBox(height: 8),
           GestureDetector(
             onTap: () => _openPlace(
@@ -605,7 +678,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             ),
           ],
         ],
-        if (item.consignee.isNotEmpty) ...[
+        if (showConsignee) ...[
           const SizedBox(height: 8),
           Text('Грузополучатель: ${item.consignee}'),
         ],
@@ -615,13 +688,15 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           runSpacing: 8,
           children: [
             if (item.weightKg != null) _metric(Icons.scale, formatKg(item.weightKg)),
+            if (item.volumeM3 != null)
+              _metric(Icons.inventory_2_outlined, formatM3(item.volumeM3)),
             if (item.units != null)
               _metric(Icons.inventory_2_outlined, formatUnits(item.units, item.measureUnit)),
             if (item.sizeLabel.isNotEmpty)
               _metric(Icons.straighten, item.sizeLabel),
           ],
         ),
-        if (item.loadQueue.isNotEmpty || item.loadGate.hasContent) ...[
+        if (showLoadOps) ...[
           const SizedBox(height: 8),
           Text(
             [
@@ -632,7 +707,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             style: const TextStyle(color: AppColors.muted),
           ),
         ],
-        if (item.unloadQueue.isNotEmpty || item.unloadGate.hasContent) ...[
+        if (showUnloadOps) ...[
           const SizedBox(height: 4),
           Text(
             [
@@ -643,19 +718,19 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             style: const TextStyle(color: AppColors.muted),
           ),
         ],
-        if (item.loadComment.isNotEmpty) ...[
+        if (showLoadComment) ...[
           const SizedBox(height: 8),
           Text('Погрузка: ${item.loadComment}', style: const TextStyle(color: AppColors.muted)),
         ],
-        if (item.unloadComment.isNotEmpty) ...[
+        if (showUnloadComment) ...[
           const SizedBox(height: 4),
           Text('Выгрузка: ${item.unloadComment}', style: const TextStyle(color: AppColors.muted)),
         ],
-        if (dates.isNotEmpty) ...[
+        if (showDates) ...[
           const SizedBox(height: 8),
           Text(dates, style: const TextStyle(color: AppColors.muted)),
         ],
-        if (item.comment.isNotEmpty) ...[
+        if (item.comment.isNotEmpty && !_same(item.comment, item.title)) ...[
           const SizedBox(height: 8),
           Text(item.comment, style: const TextStyle(color: AppColors.muted)),
         ],

@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_exception.dart';
+import '../api/driver_api.dart';
 import '../models/driver_profile.dart';
+import '../models/external_auth.dart';
+import '../models/pep.dart';
+import '../services/external_auth.dart';
+import '../services/pep_vault.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
+import '../widgets/id_document_card.dart';
+import '../widgets/pep_card.dart';
+import '../widgets/ru_license_plate.dart';
 
 class DriverProfileScreen extends StatefulWidget {
-  const DriverProfileScreen({super.key});
+  final DriverApi? api;
+  final PepVault? pep;
+
+  const DriverProfileScreen({super.key, this.api, this.pep});
 
   @override
   State<DriverProfileScreen> createState() => _DriverProfileScreenState();
@@ -14,8 +25,24 @@ class DriverProfileScreen extends StatefulWidget {
 
 class _DriverProfileScreenState extends State<DriverProfileScreen> {
   DriverProfile? _driver;
+  PepRecord? _pep;
+  Set<AuthProviderKind> _linked = {};
   String? _error;
   bool _loading = true;
+  bool _pepBusy = false;
+
+  DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
+
+  PepVault get _vault =>
+      widget.pep ?? AppScope.maybeOf(context)?.pep ?? PepVault();
+
+  String get _owner {
+    final driver = _driver;
+    if (driver == null) return 'local';
+    if (driver.id.isNotEmpty) return driver.id;
+    if (driver.phone.isNotEmpty) return driver.phone;
+    return 'local';
+  }
 
   @override
   void initState() {
@@ -25,29 +52,139 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   Future<void> _load() async {
     final scope = AppScope.maybeOf(context);
-    if (scope == null) {
+    final api = _api;
+    if (api == null) {
       setState(() {
         _driver = const DriverProfile(id: '', name: '', phone: '');
         _loading = false;
       });
+      await _reloadPep();
       return;
     }
     try {
-      final loaded = await scope.api.me();
-      final driver = loaded.orFallback(scope.auth.driver);
-      scope.auth.applyProfile(driver);
+      final loaded = await api.me();
+      final driver = loaded.orFallback(scope?.auth.driver);
+      scope?.auth.applyProfile(driver);
       if (!mounted) return;
       setState(() {
         _driver = driver;
         _loading = false;
       });
+      await _reloadPep();
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
-        _driver = scope.auth.driver;
+        _driver = scope?.auth.driver;
         _error = error.message;
         _loading = false;
       });
+      await _reloadPep();
+    }
+  }
+
+  Future<void> _reloadPep() async {
+    try {
+      final record = await _vault.read(_owner);
+      final linked = await _vault.linkedProviders();
+      if (!mounted) return;
+      setState(() {
+        _pep = record;
+        _linked = linked;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _issuePep() async {
+    final agreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => const _PepConsentDialog(),
+    );
+    if (agreed != true) return;
+    setState(() => _pepBusy = true);
+    try {
+      final via = _linked.contains(AuthProviderKind.gosuslugi)
+          ? AuthProviderKind.gosuslugi
+          : _linked.contains(AuthProviderKind.goskey)
+              ? AuthProviderKind.goskey
+              : AuthProviderKind.sms;
+      final record = await _vault.issue(driverId: _owner, via: via);
+      try {
+        await _api?.registerPep(record);
+      } on ApiException {
+        // ключ уже на устройстве — сервер может ещё не принимать ПЭП
+      }
+      await _reloadPep();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ПЭП выпущена и хранится на этом телефоне'),
+          backgroundColor: AppColors.green,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _pepBusy = false);
+    }
+  }
+
+  Future<void> _revokePep() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Отозвать ПЭП?'),
+        content: const Text(
+          'Ключ будет удалён с этого телефона. Подписывать документы этим ключом больше нельзя.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Отозвать'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _pepBusy = true);
+    try {
+      await _vault.revoke(_owner);
+      await _reloadPep();
+    } finally {
+      if (mounted) setState(() => _pepBusy = false);
+    }
+  }
+
+  Future<void> _external(AuthProviderKind provider) async {
+    final api = _api;
+    if (api == null) return;
+    setState(() => _pepBusy = true);
+    try {
+      final outcome = await ExternalAuthService(api).authenticate(provider);
+      if (outcome.session != null) {
+        await _vault.linkProvider(provider);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            outcome.session != null
+                ? '${provider.title} привязаны к этому телефону'
+                : (outcome.message ?? 'Откройте ${provider.title}'),
+          ),
+          backgroundColor:
+              outcome.session != null ? AppColors.green : AppColors.navy,
+        ),
+      );
+      await _reloadPep();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message), backgroundColor: AppColors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _pepBusy = false);
     }
   }
 
@@ -69,8 +206,8 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final driver = _driver ?? AppScope.maybeOf(context)?.auth.driver;
-    final license = driver?.license;
-    final passport = driver?.passport;
+    final license = driver?.license ?? const DriverLicense();
+    final passport = driver?.passport ?? const DriverPassport();
     final auto = driver?.auto;
     return Scaffold(
       appBar: AppBar(title: const Text('Профиль')),
@@ -81,71 +218,175 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
                 children: [
-                Center(
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColors.navy,
-                    child: Text(
-                      _initials(driver?.name ?? ''),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
+                  _identity(driver),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: AppColors.red),
                       ),
                     ),
+                  const SizedBox(height: 24),
+                  _section('Подпись'),
+                  PepCard(
+                    record: _pep,
+                    linked: _linked,
+                    busy: _pepBusy,
+                    onIssue: _issuePep,
+                    onRevoke: _revokePep,
+                    onGosuslugi: () => _external(AuthProviderKind.gosuslugi),
+                    onGoskey: () => _external(AuthProviderKind.goskey),
                   ),
+                  const SizedBox(height: 24),
+                  _section('Документы'),
+                  const Text(
+                    'Нажмите карточку, чтобы скопировать номер',
+                    style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  PassportDocumentCard(passport: passport),
+                  const SizedBox(height: 12),
+                  LicenseDocumentCard(license: license),
+                  if (_hasContacts(driver)) ...[
+                    const SizedBox(height: 24),
+                    _section('Контакты'),
+                    _contactCard(driver),
+                  ],
+                  if (auto?.hasContent ?? false) ...[
+                    const SizedBox(height: 24),
+                    _section('Машина'),
+                    _vehicleCard(auto!),
+                  ],
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Выйти'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.red,
+                      side: const BorderSide(color: AppColors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _identity(DriverProfile? driver) {
+    final name = (driver?.name ?? '').trim();
+    final company = (driver?.carrierName ?? '').trim();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        CircleAvatar(
+          radius: 34,
+          backgroundColor: AppColors.navy,
+          child: Text(
+            _initials(name),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isEmpty ? 'Водитель' : name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                  height: 1.2,
                 ),
-                const SizedBox(height: 20),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(_error!, style: const TextStyle(color: AppColors.red)),
-                  ),
-                _card('ФИО', driver?.name, requiredField: true),
-                _card('Телефон', driver?.phone, requiredField: true),
-                _card('Доп. телефон', driver?.phoneSecondary),
-                _card('Почта', driver?.email),
-                _card('Компания', driver?.carrierName),
-                if (license?.hasContent ?? false) ...[
-                  const SizedBox(height: 8),
-                  _section('Водительское удостоверение'),
-                  _card('Номер', license?.number),
-                  _card('Дата выдачи', license?.issueDate),
-                  _card('Кем выдано', license?.issuedBy),
-                  _card('Город выдачи', license?.issueCity),
-                ],
-                if (passport?.hasContent ?? false) ...[
-                  const SizedBox(height: 8),
-                  _section('Паспорт'),
-                  _card('Серия и номер', passport?.seriesNumber),
-                  _card('Дата выдачи', passport?.issueDate),
-                ],
-                if (auto?.hasContent ?? false) ...[
-                  const SizedBox(height: 8),
-                  _section('Машина'),
-                  _card('Госномер', auto?.stateNumber),
-                  _card('Марка', auto?.brand),
-                  _card('Модель', auto?.model),
-                  _card('VIN', auto?.vin),
-                  _card('Год', auto?.year),
-                  _card('Цвет', auto?.color),
-                  _card('СТС', auto?.stsNumber),
-                  _card('Категория ТС', auto?.carCategory),
-                  _card('Тип кузова', auto?.bodyType),
-                ],
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Выйти'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.red,
-                    side: const BorderSide(color: AppColors.red),
+              ),
+              if (company.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  company,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _hasContacts(DriverProfile? driver) {
+    if (driver == null) return false;
+    return driver.phone.isNotEmpty ||
+        driver.phoneSecondary.isNotEmpty ||
+        driver.email.isNotEmpty;
+  }
+
+  Widget _contactCard(DriverProfile? driver) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          _row('Телефон', driver?.phone),
+          _row('Доп. телефон', driver?.phoneSecondary),
+          _row('Почта', driver?.email),
+        ],
+      ),
+    );
+  }
+
+  Widget _vehicleCard(DriverAuto auto) {
+    final spec = [
+      if (auto.year.isNotEmpty) auto.year,
+      if (auto.color.isNotEmpty) auto.color,
+      if (auto.carCategory.isNotEmpty) 'кат. ${auto.carCategory}',
+      if (auto.bodyType.isNotEmpty) auto.bodyType,
+    ].join(' · ');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (auto.stateNumber.isNotEmpty)
+            RuLicensePlateBadge(number: auto.stateNumber),
+          if (auto.title.isNotEmpty && auto.title != auto.stateNumber) ...[
+            const SizedBox(height: 10),
+            Text(
+              [auto.brand, auto.model].where((part) => part.isNotEmpty).join(' '),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
               ),
             ),
+          ],
+          if (spec.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(spec, style: const TextStyle(color: AppColors.muted)),
+          ],
+          if (auto.stsNumber.isNotEmpty) _row('СТС', auto.stsNumber),
+          if (auto.vin.isNotEmpty) _row('VIN', auto.vin),
+        ],
+      ),
     );
   }
 
@@ -163,34 +404,84 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     );
   }
 
-  Widget _card(String title, String? content, {bool requiredField = false}) {
-    if ((content == null || content.trim().isEmpty) && !requiredField) {
+  Widget _row(String title, String? content) {
+    if (content == null || content.trim().isEmpty) {
       return const SizedBox.shrink();
     }
-    final value = (content == null || content.trim().isEmpty) ? '—' : content;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: AppColors.navy,
+          SizedBox(
+            width: 118,
+            child: Text(
+              title,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              content,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PepConsentDialog extends StatefulWidget {
+  const _PepConsentDialog();
+
+  @override
+  State<_PepConsentDialog> createState() => _PepConsentDialogState();
+}
+
+class _PepConsentDialogState extends State<_PepConsentDialog> {
+  bool _agreed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Выпуск ПЭП'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Простая электронная подпись создаётся на этом телефоне. '
+            'Ею подтверждаются ваши действия в приложении: приём и сдача груза. '
+            'Закрытый ключ не передаётся на сервер.',
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _agreed,
+            onChanged: (value) => setState(() => _agreed = value ?? false),
+            title: const Text(
+              'Согласен, что действия с моей учётной записью подписываются этой ПЭП',
+              style: TextStyle(fontSize: 14),
+            ),
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Отмена'),
+        ),
+        TextButton(
+          onPressed: _agreed ? () => Navigator.pop(context, true) : null,
+          child: const Text('Выпустить'),
+        ),
+      ],
     );
   }
 }

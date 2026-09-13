@@ -19,6 +19,8 @@ class DriverLicense {
       issuedBy.isNotEmpty ||
       issueCity.isNotEmpty;
 
+  String get displayNumber => formatRuLicenseNumber(number);
+
   factory DriverLicense.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const DriverLicense();
     return DriverLicense(
@@ -46,6 +48,8 @@ class DriverPassport {
 
   String get seriesNumber =>
       [series, number].where((part) => part.isNotEmpty).join(' ');
+
+  String get displaySeriesNumber => formatRuPassportNumber(series, number);
 
   factory DriverPassport.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const DriverPassport();
@@ -189,6 +193,22 @@ class DriverProfile {
       auto: auto == null ? null : DriverAuto.fromJson(auto),
     );
   }
+}
+
+String formatRuLicenseNumber(String raw) {
+  final compact = raw.replaceAll(RegExp(r'[\s-]'), '');
+  if (RegExp(r'^\d{10}$').hasMatch(compact)) {
+    return '${compact.substring(0, 2)} ${compact.substring(2, 4)} ${compact.substring(4)}';
+  }
+  return raw.trim();
+}
+
+String formatRuPassportNumber(String series, String number) {
+  final joined = '$series$number'.replaceAll(RegExp(r'[\s-]'), '');
+  if (RegExp(r'^\d{10}$').hasMatch(joined)) {
+    return '${joined.substring(0, 2)} ${joined.substring(2, 4)}  ${joined.substring(4)}';
+  }
+  return [series, number].where((part) => part.trim().isNotEmpty).join(' ');
 }
 
 String formatDay(Object? raw) {
