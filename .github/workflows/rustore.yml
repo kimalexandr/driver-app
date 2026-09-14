@@ -1,0 +1,249 @@
+name: RuStore
+
+on:
+  workflow_dispatch:
+    inputs:
+      whats_new:
+        description: "Что нового (для карточки RuStore)"
+        required: false
+        default: ""
+      publish_type:
+        description: "INSTANTLY или MANUAL"
+        required: false
+        default: "INSTANTLY"
+      submit:
+        description: "Отправить черновик на модерацию"
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: rustore-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_NAME: ru.sevenrights.driver
+      RUSTORE_API: https://public-api.rustore.ru
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check RuStore secrets
+        env:
+          KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
+          PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
+          TOKEN: ${{ secrets.RUSTORE_TOKEN }}
+        run: |
+          if [ -z "$KEY_ID" ]; then
+            echo "::error::Нужен секрет RUSTORE_KEY_ID (id ключа из RuStore Консоли)."
+            exit 1
+          fi
+          if [ -z "$PRIVATE_KEY" ] && [ -z "$TOKEN" ]; then
+            echo "::error::Нужен секрет RUSTORE_PRIVATE_KEY или RUSTORE_TOKEN (приватный ключ из RuStore Консоли)."
+            exit 1
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Decode Android keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_PROPERTIES" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_PROPERTIES не заданы — APK будет с debug-подписью. Для RuStore обычно нужен тот же upload-keystore, что уже в консоли."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
+          printf '%s\n' "$KEY_PROPERTIES" > android/key.properties
+          # storeFile в key.properties должен указывать на upload-keystore.jks
+          if ! grep -q 'storeFile=' android/key.properties; then
+            echo 'storeFile=upload-keystore.jks' >> android/key.properties
+          fi
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Authenticate to RuStore
+        env:
+          KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
+          PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
+          TOKEN: ${{ secrets.RUSTORE_TOKEN }}
+        run: |
+          set -euo pipefail
+          KEY_MATERIAL="${PRIVATE_KEY:-$TOKEN}"
+          KEY_FILE=$(mktemp)
+          BODY_FILE=$(mktemp)
+          trap 'rm -f "$KEY_FILE" "$BODY_FILE"' EXIT
+
+          # Приватный ключ из консоли часто приходит как Base64 PKCS#8 без PEM-заголовков.
+          if printf '%s' "$KEY_MATERIAL" | grep -q "BEGIN"; then
+            printf '%b\n' "$KEY_MATERIAL" > "$KEY_FILE"
+          else
+            B64=$(printf '%s' "$KEY_MATERIAL" | tr -d '\r\n\t ')
+            {
+              echo '-----BEGIN PRIVATE KEY-----'
+              echo "$B64" | fold -w 64
+              echo '-----END PRIVATE KEY-----'
+            } > "$KEY_FILE"
+          fi
+          chmod 600 "$KEY_FILE"
+
+          TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%S.%3N%:z")
+          SIGNATURE=$(printf '%s%s' "$KEY_ID" "$TIMESTAMP" \
+            | openssl dgst -sha512 -sign "$KEY_FILE" \
+            | base64 -w0)
+          if [ -z "$SIGNATURE" ]; then
+            echo "::error::Не удалось подписать запрос. Проверьте RUSTORE_PRIVATE_KEY / RUSTORE_TOKEN (PEM или Base64 PKCS#8)."
+            exit 1
+          fi
+
+          HTTP_CODE=$(curl -sS --connect-timeout 10 --max-time 60 \
+            -o "$BODY_FILE" -w "%{http_code}" \
+            -X POST "$RUSTORE_API/public/auth/" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg k "$KEY_ID" --arg t "$TIMESTAMP" --arg s "$SIGNATURE" \
+              '{keyId:$k, timestamp:$t, signature:$s}')")
+
+          echo "Auth HTTP $HTTP_CODE"
+          cat "$BODY_FILE"
+          echo
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::RuStore auth failed"
+            exit 1
+          fi
+
+          JWE=$(jq -r '.body.jwe // empty' "$BODY_FILE")
+          if [ -z "$JWE" ]; then
+            echo "::error::В ответе auth нет body.jwe"
+            exit 1
+          fi
+          echo "JWE_TOKEN=$JWE" >> "$GITHUB_ENV"
+
+      - name: Create RuStore draft
+        env:
+          INPUT_WHATS_NEW: ${{ inputs.whats_new }}
+          PUBLISH_TYPE: ${{ inputs.publish_type }}
+        run: |
+          set -euo pipefail
+          VERSION_NAME=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          VERSION_CODE=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f2)
+          if [ -n "${INPUT_WHATS_NEW:-}" ]; then
+            WHATS_NEW="$INPUT_WHATS_NEW"
+          else
+            WHATS_NEW="Версия $VERSION_NAME ($VERSION_CODE): обновление приложения водителя 7Rights."
+          fi
+
+          BODY_FILE=$(mktemp)
+          trap 'rm -f "$BODY_FILE"' EXIT
+
+          HTTP_CODE=$(curl -sS --connect-timeout 10 --max-time 60 \
+            -o "$BODY_FILE" -w "%{http_code}" \
+            -X POST "$RUSTORE_API/public/v1/application/$PACKAGE_NAME/version" \
+            -H "Content-Type: application/json" \
+            -H "Public-Token: $JWE_TOKEN" \
+            -d "$(jq -n \
+              --arg name "7Rights Driver" \
+              --arg whats "$WHATS_NEW" \
+              --arg pub "$PUBLISH_TYPE" \
+              '{appName:$name, appType:"MAIN", publishType:$pub, whatsNew:$whats}')")
+
+          echo "Create draft HTTP $HTTP_CODE"
+          cat "$BODY_FILE"
+          echo
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Не удалось создать черновик. Часто уже есть незакрытый draft в консоли RuStore."
+            exit 1
+          fi
+
+          VERSION_ID=$(jq -r '.body | if type=="object" then (.versionId // .version_id // .id // empty) else . end' "$BODY_FILE")
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+            echo "::error::Нет versionId в ответе"
+            exit 1
+          fi
+          echo "VERSION_ID=$VERSION_ID" >> "$GITHUB_ENV"
+          echo "Черновик versionId=$VERSION_ID"
+
+      - name: Upload APK to RuStore
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          BODY_FILE=$(mktemp)
+          trap 'rm -f "$BODY_FILE"' EXIT
+
+          HTTP_CODE=$(curl -sS --connect-timeout 10 --max-time 600 \
+            -o "$BODY_FILE" -w "%{http_code}" \
+            -X POST "$RUSTORE_API/public/v1/application/$PACKAGE_NAME/version/$VERSION_ID/apk?servicesType=Unknown&isMainApk=true" \
+            -H "Public-Token: $JWE_TOKEN" \
+            -F "file=@${APK}")
+
+          echo "Upload APK HTTP $HTTP_CODE"
+          cat "$BODY_FILE"
+          echo
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Загрузка APK не удалась"
+            exit 1
+          fi
+          CODE=$(jq -r '.code // empty' "$BODY_FILE")
+          if [ -n "$CODE" ] && [ "$CODE" != "OK" ]; then
+            echo "::error::Upload вернул code=$CODE"
+            exit 1
+          fi
+
+      - name: Submit draft for moderation
+        if: ${{ inputs.submit }}
+        run: |
+          set -euo pipefail
+          BODY_FILE=$(mktemp)
+          trap 'rm -f "$BODY_FILE"' EXIT
+
+          HTTP_CODE=$(curl -sS --connect-timeout 10 --max-time 60 \
+            -o "$BODY_FILE" -w "%{http_code}" \
+            -X POST "$RUSTORE_API/public/v1/application/$PACKAGE_NAME/version/$VERSION_ID/commit?priorityUpdate=0" \
+            -H "Public-Token: $JWE_TOKEN")
+
+          echo "Commit HTTP $HTTP_CODE"
+          cat "$BODY_FILE"
+          echo
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Отправка на модерацию не удалась"
+            exit 1
+          fi
+          CODE=$(jq -r '.code // empty' "$BODY_FILE")
+          if [ -n "$CODE" ] && [ "$CODE" != "OK" ]; then
+            echo "::error::Commit вернул code=$CODE"
+            exit 1
+          fi
+          echo "Готово: версия $VERSION_ID отправлена на модерацию RuStore"
