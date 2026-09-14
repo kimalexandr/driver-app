@@ -47,7 +47,7 @@ void main() {
           title: 'Груз 1',
           weightKg: 1000,
           volumeM3: 5,
-          titles: const [
+          titles: [
             EtrnTitle(
               code: 'T1',
               name: 'Грузоотправитель',

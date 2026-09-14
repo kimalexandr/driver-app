@@ -97,7 +97,7 @@ class MockDriverApi implements DriverApi {
               signedAt: '14.03.2024 17:05',
               signedBy: 'ООО «Грузовик»',
             ),
-            const EtrnTitle(
+            EtrnTitle(
               code: 'T2',
               name: 'Перевозчик, приём',
             ),
