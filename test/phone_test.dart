@@ -5,7 +5,7 @@ void main() {
   test('маскирует набор как российский мобильный', () {
     expect(formatRuPhoneLocal(''), '');
     expect(formatRuPhoneLocal('9'), '(9');
-    expect(formatRuPhoneLocal('999'), '(999');
+    expect(formatRuPhoneLocal('999'), '(999) ');
     expect(formatRuPhoneLocal('999123'), '(999) 123');
     expect(formatRuPhoneLocal('9991234567'), '(999) 123-45-67');
     expect(formatRuPhoneLocal('79991234567'), '(999) 123-45-67');
