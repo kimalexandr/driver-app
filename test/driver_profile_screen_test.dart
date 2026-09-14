@@ -37,6 +37,8 @@ void main() {
     expect(find.byType(LicenseDocumentCard), findsOneWidget);
     expect(find.byType(RuLicensePlateBadge), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Повернуть'));
+    await tester.pump();
     await tester.tap(find.text('Повернуть'));
     await tester.pump();
 
