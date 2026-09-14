@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_exception.dart';
 import '../api/driver_api.dart';
@@ -109,21 +110,27 @@ class _RequestsScreenState extends State<RequestsScreen> {
   }
 
   Future<void> _openRoute(Trip trip) async {
-    final opened = await openYandexRoute(
-      from: trip.startAddress.isNotEmpty ? trip.startAddress : trip.from,
-      to: trip.finishAddress.isNotEmpty ? trip.finishAddress : trip.to,
-      fromLat: trip.startLat,
-      fromLng: trip.startLng,
-      toLat: trip.finishLat,
-      toLng: trip.finishLng,
+    final opened = await openYandexNavigateTo(
+      address: trip.destination,
+      lat: trip.destinationLat,
+      lng: trip.destinationLng,
     );
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Нет адреса или координат для маршрута'),
+          content: Text('Нет адреса или координат для навигации'),
           backgroundColor: AppColors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _callDispatcher(Trip trip) async {
+    final phone = trip.dispatcherPhone.replaceAll(RegExp(r'[^\d+]'), '');
+    if (phone.isEmpty) return;
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     }
   }
 
@@ -315,10 +322,18 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                     ],
                                   ),
                                 ),
+                                if (trip.dispatcherPhone.isNotEmpty)
+                                  IconButton(
+                                    tooltip: 'Позвонить диспетчеру',
+                                    onPressed: () => _callDispatcher(trip),
+                                    icon: const Icon(Icons.phone_outlined, size: 20),
+                                    color: AppColors.navy,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
                                 TextButton.icon(
                                   onPressed: () => _openRoute(trip),
                                   icon: const Icon(Icons.navigation_outlined, size: 18),
-                                  label: const Text('Маршрут'),
+                                  label: Text(trip.navigationLabel),
                                 ),
                               ],
                             ),

@@ -6,18 +6,26 @@ import '../models/driver_profile.dart';
 import '../models/external_auth.dart';
 import '../models/pep.dart';
 import '../services/external_auth.dart';
+import '../services/max_digital_id.dart';
 import '../services/pep_vault.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/id_document_card.dart';
+import '../widgets/max_digital_id_card.dart';
 import '../widgets/pep_card.dart';
 import '../widgets/ru_license_plate.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   final DriverApi? api;
   final PepVault? pep;
+  final MaxDigitalIdService? maxDigitalId;
 
-  const DriverProfileScreen({super.key, this.api, this.pep});
+  const DriverProfileScreen({
+    super.key,
+    this.api,
+    this.pep,
+    this.maxDigitalId,
+  });
 
   @override
   State<DriverProfileScreen> createState() => _DriverProfileScreenState();
@@ -30,11 +38,16 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   String? _error;
   bool _loading = true;
   bool _pepBusy = false;
+  bool _maxLinked = false;
+  bool _maxBusy = false;
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
   PepVault get _vault =>
       widget.pep ?? AppScope.maybeOf(context)?.pep ?? PepVault();
+
+  MaxDigitalIdService get _maxId =>
+      widget.maxDigitalId ?? MaxDigitalIdService();
 
   String get _owner {
     final driver = _driver;
@@ -86,12 +99,51 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     try {
       final record = await _vault.read(_owner);
       final linked = await _vault.linkedProviders();
+      final maxLinked = await _maxId.isLinked(_owner);
       if (!mounted) return;
       setState(() {
         _pep = record;
         _linked = linked;
+        _maxLinked = maxLinked;
       });
     } catch (_) {}
+  }
+
+  Future<void> _openMaxDigitalId() async {
+    setState(() => _maxBusy = true);
+    try {
+      final opened = await _maxId.openInMax();
+      if (!mounted) return;
+      if (!opened) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось открыть MAX. Установите мессенджер MAX.'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+        return;
+      }
+      if (!_maxLinked) {
+        await _maxId.setLinked(_owner, true);
+        await _reloadPep();
+      }
+    } finally {
+      if (mounted) setState(() => _maxBusy = false);
+    }
+  }
+
+  Future<void> _markMaxLinked(bool value) async {
+    setState(() => _maxBusy = true);
+    try {
+      await _maxId.setLinked(_owner, value);
+      await _reloadPep();
+    } finally {
+      if (mounted) setState(() => _maxBusy = false);
+    }
+  }
+
+  Future<void> _openMaxGuide() async {
+    await _maxId.openGuide();
   }
 
   Future<void> _issuePep() async {
@@ -239,6 +291,16 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     onRevoke: _revokePep,
                     onGosuslugi: () => _external(AuthProviderKind.gosuslugi),
                     onGoskey: () => _external(AuthProviderKind.goskey),
+                  ),
+                  const SizedBox(height: 24),
+                  _section('Цифровой профиль'),
+                  MaxDigitalIdCard(
+                    linked: _maxLinked,
+                    busy: _maxBusy,
+                    onOpenMax: _openMaxDigitalId,
+                    onMarkLinked: () => _markMaxLinked(true),
+                    onUnlink: () => _markMaxLinked(false),
+                    onGuide: _openMaxGuide,
                   ),
                   const SizedBox(height: 24),
                   _section('Документы'),

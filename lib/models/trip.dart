@@ -566,6 +566,13 @@ class Trip {
   double? get destinationLat => canStart ? startLat : finishLat;
   double? get destinationLng => canStart ? startLng : finishLng;
 
+  /// Куда вести навигацию с учётом статуса рейса.
+  String get navigationLabel {
+    if (canStart) return 'К погрузке';
+    if (canDeliver) return 'К выгрузке';
+    return 'Маршрут';
+  }
+
   String get dateRange {
     if (dateStart.isEmpty) return dateEnd;
     if (dateEnd.isEmpty || dateEnd == dateStart) return dateStart;
@@ -592,6 +599,34 @@ class Trip {
 
   bool get hasAttorney =>
       attorneyNumber.isNotEmpty || attorneyDate.isNotEmpty || attorneyUrl.isNotEmpty;
+
+  /// Доверенность с рейса или с первой поставки, где она есть.
+  bool get hasAnyAttorney =>
+      hasAttorney || shipments.any((item) => item.hasAttorney);
+
+  String get resolvedAttorneyNumber {
+    if (attorneyNumber.isNotEmpty) return attorneyNumber;
+    for (final item in shipments) {
+      if (item.attorneyNumber.isNotEmpty) return item.attorneyNumber;
+    }
+    return '';
+  }
+
+  String get resolvedAttorneyDate {
+    if (attorneyDate.isNotEmpty) return attorneyDate;
+    for (final item in shipments) {
+      if (item.attorneyDate.isNotEmpty) return item.attorneyDate;
+    }
+    return '';
+  }
+
+  String get resolvedAttorneyUrl {
+    if (attorneyUrl.isNotEmpty) return attorneyUrl;
+    for (final item in shipments) {
+      if (item.attorneyUrl.isNotEmpty) return item.attorneyUrl;
+    }
+    return '';
+  }
 
   List<EtrnTitle> get allEtrnTitles {
     final byCode = <String, EtrnTitle>{};

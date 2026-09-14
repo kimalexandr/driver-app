@@ -96,8 +96,9 @@ void main() {
     expect(find.textContaining('Опаздываете'), findsOneWidget);
     expect(find.textContaining('705 км'), findsWidgets);
     expect(find.text('Диспетчер'), findsOneWidget);
-    expect(find.text('Доверенность на водителя'), findsWidgets);
-    expect(find.textContaining('№ Д-17'), findsWidgets);
+    expect(find.text('Машина'), findsOneWidget);
+    expect(find.text('Доверенность на водителя'), findsOneWidget);
+    expect(find.textContaining('№ Д-17'), findsOneWidget);
     expect(find.textContaining('окно 09:00–12:00'), findsOneWidget);
     expect(find.text('Отправитель'), findsOneWidget);
     expect(find.text('Получатель'), findsOneWidget);

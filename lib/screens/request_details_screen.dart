@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_exception.dart';
 import '../api/driver_api.dart';
+import '../models/driver_profile.dart';
 import '../models/trip.dart';
 import '../services/location_service.dart';
 import '../services/yandex_maps.dart';
@@ -13,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../widgets/etrn_titles.dart';
 import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/trip_deadline_banner.dart';
 import '../widgets/trip_status_thread.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
@@ -103,17 +105,22 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Future<void> _openTripRoute() async {
-    final opened = await openYandexRoute(
-      from: _trip.startAddress.isNotEmpty ? _trip.startAddress : _trip.from,
-      to: _trip.finishAddress.isNotEmpty ? _trip.finishAddress : _trip.to,
-      fromLat: _trip.startLat,
-      fromLng: _trip.startLng,
-      toLat: _trip.finishLat,
-      toLng: _trip.finishLng,
+    final opened = await openYandexNavigateTo(
+      address: _trip.destination,
+      lat: _trip.destinationLat,
+      lng: _trip.destinationLng,
     );
     if (!opened && mounted) {
-      _showError('Нет адреса или координат для маршрута');
+      _showError('Нет адреса или координат для навигации');
     }
+  }
+
+  Future<void> _copyText(String value, String okMessage) async {
+    final text = value.trim();
+    if (text.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    _showOk(okMessage);
   }
 
   Future<void> _sendLocation() async {
@@ -160,7 +167,12 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Рейс №${_trip.number}')),
+      appBar: AppBar(
+        title: GestureDetector(
+          onLongPress: () => _copyText(_trip.number, 'Номер рейса скопирован'),
+          child: Text('Рейс №${_trip.number}'),
+        ),
+      ),
       body: Column(
         children: [
           _pinnedBar(),
@@ -170,6 +182,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  TripDeadlineBanner(trip: _trip),
                   TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
                   const SizedBox(height: 16),
                   _card(
@@ -181,7 +194,14 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           )
                         : EtrnTitlesBlock(titles: _trip.allEtrnTitles),
                   ),
-                  _autoCard(),
+                  if (_showAutoCard) ...[
+                    const SizedBox(height: 16),
+                    _autoCard(),
+                  ],
+                  if (_trip.hasAnyAttorney) ...[
+                    const SizedBox(height: 16),
+                    _attorneyCard(),
+                  ],
                   if (_showTripComment) ...[
                     const SizedBox(height: 16),
                     _card(
@@ -210,11 +230,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       hideCompany: _trip.finishCompany,
                       hideAddress: _trip.finishAddress,
                     ),
-                  ],
-                  if (_trip.hasAttorney &&
-                      _trip.shipments.every((item) => !item.hasAttorney)) ...[
-                    const SizedBox(height: 16),
-                    _attorneyCard(),
                   ],
                 ],
               ),
@@ -249,6 +264,20 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       _trip.cargo.isNotEmpty ||
       _trip.totalWeightKg != null ||
       _trip.totalVolumeM3 != null;
+
+  DriverAuto? get _profileAuto => AppScope.maybeOf(context)?.auth.driver?.auto;
+
+  /// Гос.номер как в списке заявок: с рейса, иначе из профиля.
+  String get _plateNumber {
+    if (_trip.vehicle.isNotEmpty) return _trip.vehicle;
+    return _profileAuto?.stateNumber ?? '';
+  }
+
+  bool get _showAutoCard {
+    if (_plateNumber.isNotEmpty) return true;
+    final auto = _profileAuto;
+    return auto != null && auto.hasContent;
+  }
 
   bool get _cargoNameAddsInfo {
     if (_trip.cargo.isEmpty) return false;
@@ -347,53 +376,67 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Widget _autoCard() {
-    final auto = AppScope.maybeOf(context)?.auth.driver?.auto;
-    if (auto == null || !auto.hasContent) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 16),
-      child: _card(
-        title: 'Машина',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (auto.stateNumber.isNotEmpty)
-              RuLicensePlateBadge(number: auto.stateNumber),
-            if ([auto.brand, auto.model].any((part) => part.isNotEmpty)) ...[
-              if (auto.stateNumber.isNotEmpty) const SizedBox(height: 10),
-              Text(
-                [auto.brand, auto.model].where((part) => part.isNotEmpty).join(' '),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ],
-            if (auto.bodyType.isNotEmpty || auto.color.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                [auto.bodyType, auto.color, auto.year]
-                    .where((part) => part.isNotEmpty)
-                    .join(' · '),
-                style: const TextStyle(color: AppColors.muted),
-              ),
-            ],
+    final auto = _profileAuto;
+    final plate = _plateNumber;
+    return _card(
+      title: 'Машина',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (plate.isNotEmpty)
+            GestureDetector(
+              onTap: () => _copyText(plate, 'Гос. номер скопирован'),
+              child: RuLicensePlateBadge(number: plate),
+            ),
+          if (auto != null &&
+              [auto.brand, auto.model].any((part) => part.isNotEmpty)) ...[
+            if (plate.isNotEmpty) const SizedBox(height: 10),
+            Text(
+              [auto.brand, auto.model].where((part) => part.isNotEmpty).join(' '),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ],
-        ),
+          if (auto != null &&
+              (auto.bodyType.isNotEmpty ||
+                  auto.color.isNotEmpty ||
+                  auto.year.isNotEmpty)) ...[
+            const SizedBox(height: 6),
+            Text(
+              [auto.bodyType, auto.color, auto.year]
+                  .where((part) => part.isNotEmpty)
+                  .join(' · '),
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          ],
+          if (plate.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Нажмите на номер, чтобы скопировать',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ],
+        ],
       ),
     );
   }
 
   Widget _attorneyCard() {
+    final number = _trip.resolvedAttorneyNumber;
+    final date = _trip.resolvedAttorneyDate;
+    final url = _trip.resolvedAttorneyUrl;
     return _card(
-      title: 'Доверенность',
+      title: 'Доверенность на водителя',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_trip.attorneyNumber.isNotEmpty)
+          if (number.isNotEmpty)
             Text(
-              '№ ${_trip.attorneyNumber}',
+              '№ $number',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-          if (_trip.attorneyDate.isNotEmpty) ...[
+          if (date.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text('до ${_trip.attorneyDate}', style: const TextStyle(color: AppColors.muted)),
+            Text('до $date', style: const TextStyle(color: AppColors.muted)),
           ],
           const SizedBox(height: 8),
           Row(
@@ -403,10 +446,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 icon: const Icon(Icons.description_outlined, size: 18),
                 label: const Text('Показать'),
               ),
-              if (_trip.attorneyUrl.isNotEmpty)
+              if (url.isNotEmpty)
                 TextButton.icon(
                   onPressed: () => launchUrl(
-                    Uri.parse(_trip.attorneyUrl),
+                    Uri.parse(url),
                     mode: LaunchMode.externalApplication,
                   ),
                   icon: const Icon(Icons.download_outlined, size: 18),
@@ -421,12 +464,15 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
 
   void _showAttorney() {
     final driver = AppScope.maybeOf(context)?.auth.driver;
+    final url = _trip.resolvedAttorneyUrl;
     final text = [
       'Доверенность на водителя',
-      if (_trip.attorneyNumber.isNotEmpty) 'Номер: ${_trip.attorneyNumber}',
-      if (_trip.attorneyDate.isNotEmpty) 'Дата: ${_trip.attorneyDate}',
+      if (_trip.resolvedAttorneyNumber.isNotEmpty)
+        'Номер: ${_trip.resolvedAttorneyNumber}',
+      if (_trip.resolvedAttorneyDate.isNotEmpty)
+        'Дата: ${_trip.resolvedAttorneyDate}',
       if (driver?.name.isNotEmpty ?? false) 'Водитель: ${driver!.name}',
-      if (_trip.vehicle.isNotEmpty) 'ТС: ${_trip.vehicle}',
+      if (_plateNumber.isNotEmpty) 'ТС: $_plateNumber',
       if (_trip.cargoLabel.isNotEmpty) 'Груз: ${_trip.cargoLabel}',
       'Маршрут: ${_trip.from} → ${_trip.to}',
       if (_trip.dateStart.isNotEmpty) 'Погрузка: ${_trip.dateStart}',
@@ -457,13 +503,13 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 icon: const Icon(Icons.copy_outlined),
                 label: const Text('Скопировать'),
               ),
-              if (_trip.attorneyUrl.isNotEmpty) ...[
+              if (url.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
                     launchUrl(
-                      Uri.parse(_trip.attorneyUrl),
+                      Uri.parse(url),
                       mode: LaunchMode.externalApplication,
                     );
                   },
@@ -577,8 +623,17 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         children: [
           if (company.isNotEmpty) _infoLine('Компания', company),
           if (party.name.isNotEmpty) _infoLine('Контакт', party.name),
-          if (party.phone.isNotEmpty)
+          if (party.phone.isNotEmpty) ...[
             _infoLine('Телефон', party.phone, onTap: () => _call(party.phone)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _call(party.phone),
+                icon: const Icon(Icons.phone_outlined, size: 18),
+                label: const Text('Позвонить'),
+              ),
+            ),
+          ],
           if (address.isNotEmpty) _infoLine('Адрес', address),
           if (party.comment.isNotEmpty) _infoLine('Комментарий', party.comment),
         ],
@@ -744,102 +799,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           const SizedBox(height: 8),
           Text(item.comment, style: const TextStyle(color: AppColors.muted)),
         ],
-        if (item.hasAttorney) ...[
-          const SizedBox(height: 12),
-          _shipmentAttorney(item),
-        ],
       ],
-    );
-  }
-
-  Widget _shipmentAttorney(Shipment item) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: AppColors.sand,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Доверенность на водителя',
-            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            [
-              if (item.attorneyNumber.isNotEmpty) '№ ${item.attorneyNumber}',
-              if (item.attorneyDate.isNotEmpty) 'до ${item.attorneyDate}',
-            ].join(' · '),
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              TextButton.icon(
-                onPressed: () => _showShipmentAttorney(item),
-                icon: const Icon(Icons.description_outlined, size: 18),
-                label: const Text('Показать'),
-              ),
-              if (item.attorneyUrl.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () => launchUrl(
-                    Uri.parse(item.attorneyUrl),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  icon: const Icon(Icons.download_outlined, size: 18),
-                  label: const Text('Скачать'),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showShipmentAttorney(Shipment item) {
-    final driver = AppScope.maybeOf(context)?.auth.driver;
-    final text = [
-      'Доверенность на водителя',
-      if (item.attorneyNumber.isNotEmpty) 'Номер: ${item.attorneyNumber}',
-      if (item.attorneyDate.isNotEmpty) 'Дата: ${item.attorneyDate}',
-      if (driver?.name.isNotEmpty ?? false) 'Водитель: ${driver!.name}',
-      if (_trip.vehicle.isNotEmpty) 'ТС: ${_trip.vehicle}',
-      if (item.title.isNotEmpty) 'Поставка: ${item.title}',
-      'Маршрут: ${item.from.isNotEmpty ? item.from : _trip.from} → ${item.to.isNotEmpty ? item.to : _trip.to}',
-    ].join('\n');
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Доверенность',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 12),
-              Text(text, style: const TextStyle(fontSize: 16, height: 1.45)),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: text));
-                  if (context.mounted) Navigator.pop(context);
-                },
-                icon: const Icon(Icons.copy_outlined),
-                label: const Text('Скопировать'),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -889,7 +849,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               const SizedBox(width: 6),
               _iconAction(
                 icon: Icons.navigation_outlined,
-                tooltip: 'Маршрут',
+                tooltip: _trip.navigationLabel,
                 onPressed: _openTripRoute,
               ),
               if (_trip.needsLocation)

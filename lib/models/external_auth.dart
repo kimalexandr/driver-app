@@ -1,6 +1,10 @@
 class OfficialAuthLinks {
   static const gosuslugi = 'https://www.gosuslugi.ru/';
   static const goskey = 'https://www.gosuslugi.ru/goskey';
+
+  /// Цифровой ID в мессенджере MAX (права / СТС / документы через Госуслуги).
+  static const maxDigitalId = 'https://max.ru/digitalid_bot';
+  static const maxDigitalIdGuide = 'https://go.max.ru/digitalId';
 }
 
 enum AuthProviderKind {

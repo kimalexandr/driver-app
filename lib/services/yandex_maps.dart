@@ -41,6 +41,20 @@ Future<bool> openYandexRoute({
   );
 }
 
+/// Маршрут от текущего местоположения до точки (погрузка / выгрузка).
+Future<bool> openYandexNavigateTo({
+  String? address,
+  double? lat,
+  double? lng,
+}) async {
+  final end = _point(lat: lat, lng: lng, address: address, preferAddress: true);
+  if (end.isEmpty) return false;
+  return _openPair(
+    app: 'yandexmaps://maps.yandex.ru/?rtext=~${_rtext(end)}&rtt=auto',
+    web: 'https://yandex.ru/maps/?rtext=~${_rtext(end)}&rtt=auto',
+  );
+}
+
 String _point({
   double? lat,
   double? lng,
