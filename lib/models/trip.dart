@@ -258,11 +258,22 @@ String tripStatusChangedAt(Trip trip, String stepId) {
     case 'assigned':
       return pick(['assigned', 'created', 'назнач']);
     case 'load':
-      return pick(['loaded', 'loading', 'погруз']);
+      final loaded = pick(['loaded', 'loading', 'погруз']);
+      if (loaded.isNotEmpty) return loaded;
+      // Выезд с погрузки = переход «в пути»
+      if (trip.isInTransit || trip.isCompleted) {
+        return pick(['in_transit', 'started', 'пути', 'выехал']);
+      }
+      return '';
     case 'transit':
       return pick(['in_transit', 'started', 'пути', 'выехал']);
     case 'unload':
-      return pick(['unloaded', 'unloading', 'выгруз']);
+      final unloaded = pick(['unloaded', 'unloading', 'выгруз']);
+      if (unloaded.isNotEmpty) return unloaded;
+      if (trip.isCompleted) {
+        return pick(['delivered', 'completed', 'достав']);
+      }
+      return '';
     case 'delivered':
       return pick(['delivered', 'completed', 'достав']);
     default:
@@ -270,8 +281,8 @@ String tripStatusChangedAt(Trip trip, String stepId) {
         final index = int.tryParse(stepId.substring(5));
         if (index != null && index >= 0 && index < trip.stops.length) {
           final stop = trip.stops[index];
-          if (stop.isLoad) return pick(['loaded', 'loading', 'погруз']);
-          if (stop.isUnload) return pick(['unloaded', 'unloading', 'выгруз']);
+          if (stop.isLoad) return tripStatusChangedAt(trip, 'load');
+          if (stop.isUnload) return tripStatusChangedAt(trip, 'unload');
         }
       }
       return '';
@@ -337,6 +348,9 @@ class Shipment {
   final double? toLat;
   final double? toLng;
   final List<EtrnTitle> titles;
+  final String attorneyNumber;
+  final String attorneyDate;
+  final String attorneyUrl;
 
   const Shipment({
     required this.id,
@@ -368,7 +382,13 @@ class Shipment {
     this.toLat,
     this.toLng,
     this.titles = const [],
+    this.attorneyNumber = '',
+    this.attorneyDate = '',
+    this.attorneyUrl = '',
   });
+
+  bool get hasAttorney =>
+      attorneyNumber.isNotEmpty || attorneyDate.isNotEmpty || attorneyUrl.isNotEmpty;
 
   bool get hasRoute =>
       from.isNotEmpty ||
@@ -391,6 +411,7 @@ class Shipment {
         ? jsonText(json, ['cargo_name', 'name', 'title', 'shipping_condition'])
         : jsonText(cargo, ['name', 'title', 'cargo_name']);
     final comment = jsonText(json, ['comment']);
+    final attorney = jsonMap(json, ['attorney', 'power_of_attorney']);
     return Shipment(
       id: jsonText(json, ['id', 'uuid']).isNotEmpty
           ? jsonText(json, ['id', 'uuid'])
@@ -433,6 +454,15 @@ class Shipment {
       toLat: jsonNumber(json, ['to_lat'])?.toDouble(),
       toLng: jsonNumber(json, ['to_lng'])?.toDouble(),
       titles: parseEtrnTitles(json),
+      attorneyNumber: attorney == null
+          ? jsonText(json, ['attorney_number'])
+          : jsonText(attorney, ['number']),
+      attorneyDate: attorney == null
+          ? formatTripDate(json['attorney_date'])
+          : formatTripDate(attorney['date'] ?? attorney['issued_at']),
+      attorneyUrl: attorney == null
+          ? jsonText(json, ['attorney_url'])
+          : jsonText(attorney, ['url', 'file_url', 'download_url']),
     );
   }
 }

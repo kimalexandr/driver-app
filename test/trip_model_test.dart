@@ -247,4 +247,31 @@ void main() {
     expect(tripMatchesQuery(trip, '14.03'), isTrue);
     expect(tripMatchesQuery(trip, 'Казань'), isFalse);
   });
+
+  test('читает доверенность поставки и время выезда как смену статуса', () {
+    final trip = Trip.fromJson({
+      'id': 9,
+      'number': 'E-9',
+      'status': 'in_transit',
+      'from': 'Москва',
+      'to': 'Тверь',
+      'status_history': [
+        {'status': 'assigned', 'at': '2024-03-14T18:40:00'},
+        {'status': 'in_transit', 'at': '2024-03-15T10:20:00'},
+      ],
+      'shipments': [
+        {
+          'id': 's1',
+          'title': 'Паллета',
+          'attorney': {'number': 'Д-22', 'date': '2024-03-01'},
+        },
+      ],
+    });
+
+    expect(trip.shipments.single.attorneyNumber, 'Д-22');
+    expect(trip.shipments.single.attorneyDate, '01.03.2024');
+    expect(tripStatusChangedAt(trip, 'assigned'), '14.03.2024 18:40');
+    expect(tripStatusChangedAt(trip, 'load'), '15.03.2024 10:20');
+    expect(tripStatusChangedAt(trip, 'transit'), '15.03.2024 10:20');
+  });
 }

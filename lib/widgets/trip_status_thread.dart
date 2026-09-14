@@ -380,7 +380,20 @@ class _StepTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (current)
+              if (step.changedAt.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    step.changedAt,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: current ? AppColors.orange : AppColors.navy,
+                    ),
+                  ),
+                ),
+              if (current) ...[
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -396,26 +409,9 @@ class _StepTile extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
-          if (step.changedAt.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.sand,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Смена ${step.changedAt}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-            ),
-          ],
           if (step.city.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(

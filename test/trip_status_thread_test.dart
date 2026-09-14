@@ -38,10 +38,16 @@ void main() {
     final steps = tripThreadSteps(base.copyWith(
       status: 'in_transit',
       statusLabel: 'В пути',
+      statusHistory: const [
+        StatusEvent(status: 'assigned', label: 'Назначен', at: '14.03.2024 18:40'),
+        StatusEvent(status: 'in_transit', label: 'В пути', at: '15.03.2024 10:20'),
+      ],
     ));
     expect(steps[1].phase, ThreadPhase.done);
+    expect(steps[1].changedAt, '15.03.2024 10:20');
     expect(steps[2].phase, ThreadPhase.current);
     expect(steps[2].hint, '705 км до Санкт-Петербург');
+    expect(steps[2].changedAt, '15.03.2024 10:20');
     expect(steps[3].phase, ThreadPhase.upcoming);
   });
 

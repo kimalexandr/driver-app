@@ -47,6 +47,8 @@ void main() {
           title: 'Груз 1',
           weightKg: 1000,
           volumeM3: 5,
+          attorneyNumber: 'Д-17',
+          attorneyDate: '01.03.2024',
           titles: [
             EtrnTitle(
               code: 'T1',
@@ -85,7 +87,7 @@ void main() {
     expect(find.text('Погрузка'), findsOneWidget);
     expect(find.text('Выгрузка'), findsOneWidget);
     expect(find.text('Сейчас'), findsOneWidget);
-    expect(find.text('Смена 14.03.2024 18:40'), findsOneWidget);
+    expect(find.text('14.03.2024 18:40'), findsOneWidget);
     expect(find.text('Документы ЭТрН'), findsOneWidget);
     expect(find.text('T1'), findsOneWidget);
     expect(find.text('T2'), findsOneWidget);
@@ -94,7 +96,8 @@ void main() {
     expect(find.textContaining('Опаздываете'), findsOneWidget);
     expect(find.textContaining('705 км'), findsWidgets);
     expect(find.text('Диспетчер'), findsOneWidget);
-    expect(find.text('Доверенность'), findsOneWidget);
+    expect(find.text('Доверенность на водителя'), findsWidgets);
+    expect(find.textContaining('№ Д-17'), findsWidgets);
     expect(find.textContaining('окно 09:00–12:00'), findsOneWidget);
     expect(find.text('Отправитель'), findsOneWidget);
     expect(find.text('Получатель'), findsOneWidget);

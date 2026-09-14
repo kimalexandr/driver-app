@@ -171,13 +171,16 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
-                  if (_trip.allEtrnTitles.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _card(
-                      title: 'Документы ЭТрН',
-                      child: EtrnTitlesBlock(titles: _trip.allEtrnTitles),
-                    ),
-                  ],
+                  const SizedBox(height: 16),
+                  _card(
+                    title: 'Документы ЭТрН',
+                    child: _trip.allEtrnTitles.isEmpty
+                        ? const Text(
+                            'Титулы пока не пришли из TMS. Когда ЭТрН появится в рейсе, здесь будут T1–T4 и статус подписи.',
+                            style: TextStyle(color: AppColors.muted, height: 1.35),
+                          )
+                        : EtrnTitlesBlock(titles: _trip.allEtrnTitles),
+                  ),
                   _autoCard(),
                   if (_showTripComment) ...[
                     const SizedBox(height: 16),
@@ -208,7 +211,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       hideAddress: _trip.finishAddress,
                     ),
                   ],
-                  if (_trip.hasAttorney) ...[
+                  if (_trip.hasAttorney &&
+                      _trip.shipments.every((item) => !item.hasAttorney)) ...[
                     const SizedBox(height: 16),
                     _attorneyCard(),
                   ],
@@ -740,7 +744,102 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           const SizedBox(height: 8),
           Text(item.comment, style: const TextStyle(color: AppColors.muted)),
         ],
+        if (item.hasAttorney) ...[
+          const SizedBox(height: 12),
+          _shipmentAttorney(item),
+        ],
       ],
+    );
+  }
+
+  Widget _shipmentAttorney(Shipment item) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.sand,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Доверенность на водителя',
+            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            [
+              if (item.attorneyNumber.isNotEmpty) '№ ${item.attorneyNumber}',
+              if (item.attorneyDate.isNotEmpty) 'до ${item.attorneyDate}',
+            ].join(' · '),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: () => _showShipmentAttorney(item),
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Показать'),
+              ),
+              if (item.attorneyUrl.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => launchUrl(
+                    Uri.parse(item.attorneyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  icon: const Icon(Icons.download_outlined, size: 18),
+                  label: const Text('Скачать'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showShipmentAttorney(Shipment item) {
+    final driver = AppScope.maybeOf(context)?.auth.driver;
+    final text = [
+      'Доверенность на водителя',
+      if (item.attorneyNumber.isNotEmpty) 'Номер: ${item.attorneyNumber}',
+      if (item.attorneyDate.isNotEmpty) 'Дата: ${item.attorneyDate}',
+      if (driver?.name.isNotEmpty ?? false) 'Водитель: ${driver!.name}',
+      if (_trip.vehicle.isNotEmpty) 'ТС: ${_trip.vehicle}',
+      if (item.title.isNotEmpty) 'Поставка: ${item.title}',
+      'Маршрут: ${item.from.isNotEmpty ? item.from : _trip.from} → ${item.to.isNotEmpty ? item.to : _trip.to}',
+    ].join('\n');
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Доверенность',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              Text(text, style: const TextStyle(fontSize: 16, height: 1.45)),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: text));
+                  if (context.mounted) Navigator.pop(context);
+                },
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('Скопировать'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

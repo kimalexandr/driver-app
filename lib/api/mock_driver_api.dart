@@ -90,6 +90,8 @@ class MockDriverApi implements DriverApi {
           weightKg: 1000,
           volumeM3: 5,
           comment: 'Не кантовать',
+          attorneyNumber: 'Д-17',
+          attorneyDate: '01.03.2024',
           titles: [
             EtrnTitle(
               code: 'T1',
