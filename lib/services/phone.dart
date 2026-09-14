@@ -24,11 +24,12 @@ String formatRuPhoneLocal(String raw) {
   buffer.write(digits.substring(0, digits.length.clamp(0, 3)));
   if (digits.length < 3) return buffer.toString();
   buffer.write(') ');
+  if (digits.length == 3) return buffer.toString();
   buffer.write(digits.substring(3, digits.length.clamp(3, 6)));
-  if (digits.length < 6) return buffer.toString();
+  if (digits.length <= 6) return buffer.toString();
   buffer.write('-');
   buffer.write(digits.substring(6, digits.length.clamp(6, 8)));
-  if (digits.length < 8) return buffer.toString();
+  if (digits.length <= 8) return buffer.toString();
   buffer.write('-');
   buffer.write(digits.substring(8, digits.length.clamp(8, 10)));
   return buffer.toString();
