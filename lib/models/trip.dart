@@ -105,6 +105,208 @@ class TripStop {
   }
 }
 
+class StatusEvent {
+  final String status;
+  final String label;
+  final String at;
+
+  const StatusEvent({
+    this.status = '',
+    this.label = '',
+    this.at = '',
+  });
+
+  bool matches(String key) {
+    final haystack = '${status.toLowerCase()} ${label.toLowerCase()}';
+    return haystack.contains(key.toLowerCase());
+  }
+
+  factory StatusEvent.fromJson(Map<String, dynamic> json) {
+    final status = jsonText(json, ['status', 'code', 'kind', 'type']);
+    final label = jsonText(json, ['status_label', 'label', 'title', 'name']);
+    return StatusEvent(
+      status: status,
+      label: label,
+      at: formatTripDate(
+        json['at'] ??
+            json['changed_at'] ??
+            json['created_at'] ??
+            json['datetime'] ??
+            json['date'],
+      ),
+    );
+  }
+}
+
+class EtrnTitle {
+  final String code;
+  final String name;
+  final bool signed;
+  final String signedAt;
+  final String signedBy;
+
+  const EtrnTitle({
+    required this.code,
+    this.name = '',
+    this.signed = false,
+    this.signedAt = '',
+    this.signedBy = '',
+  });
+
+  String get title => name.isNotEmpty ? name : etrnTitleName(code);
+
+  String get statusLine {
+    if (!signed) return 'не подписан';
+    return [
+      'подписан',
+      if (signedAt.isNotEmpty) signedAt,
+      if (signedBy.isNotEmpty) signedBy,
+    ].join(' · ');
+  }
+
+  factory EtrnTitle.fromJson(Map<String, dynamic> json) {
+    final code = normalizeEtrnCode(
+      jsonText(json, ['code', 'title_code', 'kind', 'type', 'title']),
+    );
+    final signedAt = formatTripDate(
+      json['signed_at'] ?? json['signedAt'] ?? json['date'],
+    );
+    final signedFlag = json['signed'];
+    return EtrnTitle(
+      code: code,
+      name: jsonText(json, ['name', 'label', 'title_name']),
+      signed: signedFlag == true || signedFlag == 1 || signedAt.isNotEmpty,
+      signedAt: signedAt,
+      signedBy: jsonText(json, ['signed_by', 'signer', 'company']),
+    );
+  }
+}
+
+String etrnTitleName(String code) {
+  switch (code.toUpperCase()) {
+    case 'T1':
+      return 'Грузоотправитель';
+    case 'T2':
+      return 'Перевозчик, приём';
+    case 'T3':
+      return 'Грузополучатель';
+    case 'T4':
+      return 'Перевозчик, сдача';
+    default:
+      return code;
+  }
+}
+
+String normalizeEtrnCode(String raw) {
+  final value = raw.trim().toUpperCase();
+  final match = RegExp(r'T\s*([1-4])').firstMatch(value);
+  if (match != null) return 'T${match.group(1)}';
+  final digit = RegExp(r'^[1-4]$').firstMatch(value);
+  if (digit != null) return 'T${digit.group(0)}';
+  return value;
+}
+
+List<EtrnTitle> parseEtrnTitles(Map<String, dynamic> json) {
+  final nested = jsonMap(json, ['etrn', 'documents']);
+  final maps = [
+    ...jsonMaps(json, ['titles', 'etrn_titles', 'etrn']),
+    if (nested != null) ...jsonMaps(nested, ['titles', 'items']),
+  ];
+  return maps
+      .map(EtrnTitle.fromJson)
+      .where((item) => item.code.isNotEmpty)
+      .toList();
+}
+
+List<StatusEvent> parseStatusHistory(Map<String, dynamic> json) {
+  final items = jsonMaps(json, ['status_history', 'history', 'events', 'timeline']);
+  if (items.isNotEmpty) {
+    return items
+        .map(StatusEvent.fromJson)
+        .where((item) => item.at.isNotEmpty || item.status.isNotEmpty)
+        .toList();
+  }
+  final inferred = <StatusEvent>[];
+  void add(String status, List<String> keys) {
+    for (final key in keys) {
+      final at = formatTripDate(json[key]);
+      if (at.isEmpty) continue;
+      inferred.add(StatusEvent(status: status, at: at));
+      return;
+    }
+  }
+
+  add('assigned', ['assigned_at', 'created_at']);
+  add('loaded', ['loaded_at', 'loading_at']);
+  add('in_transit', ['in_transit_at', 'started_at']);
+  add('unloaded', ['unloaded_at']);
+  add('delivered', ['delivered_at', 'completed_at']);
+  return inferred;
+}
+
+String tripStatusChangedAt(Trip trip, String stepId) {
+  String pick(List<String> keys) {
+    for (final key in keys) {
+      for (final event in trip.statusHistory) {
+        if (event.at.isNotEmpty && event.matches(key)) return event.at;
+      }
+    }
+    return '';
+  }
+
+  switch (stepId) {
+    case 'assigned':
+      return pick(['assigned', 'created', 'назнач']);
+    case 'load':
+      return pick(['loaded', 'loading', 'погруз']);
+    case 'transit':
+      return pick(['in_transit', 'started', 'пути', 'выехал']);
+    case 'unload':
+      return pick(['unloaded', 'unloading', 'выгруз']);
+    case 'delivered':
+      return pick(['delivered', 'completed', 'достав']);
+    default:
+      if (stepId.startsWith('stop_')) {
+        final index = int.tryParse(stepId.substring(5));
+        if (index != null && index >= 0 && index < trip.stops.length) {
+          final stop = trip.stops[index];
+          if (stop.isLoad) return pick(['loaded', 'loading', 'погруз']);
+          if (stop.isUnload) return pick(['unloaded', 'unloading', 'выгруз']);
+        }
+      }
+      return '';
+  }
+}
+
+bool tripMatchesQuery(Trip trip, String query) {
+  final needle = query.trim().toLowerCase();
+  if (needle.isEmpty) return true;
+  final haystack = [
+    trip.number,
+    '№${trip.number}',
+    trip.from,
+    trip.to,
+    trip.startAddress,
+    trip.finishAddress,
+    trip.startCompany,
+    trip.finishCompany,
+    trip.dateStart,
+    trip.dateEnd,
+    trip.dateRange,
+    trip.cargoLabel,
+    for (final event in trip.statusHistory) event.at,
+    for (final stop in trip.stops) ...[stop.title, stop.address],
+    for (final item in trip.shipments) ...[
+      item.title,
+      item.from,
+      item.to,
+      item.fromAddress,
+      item.toAddress,
+    ],
+  ].join(' · ').toLowerCase();
+  return haystack.contains(needle);
+}
+
 class Shipment {
   final String id;
   final String title;
@@ -134,6 +336,7 @@ class Shipment {
   final double? fromLng;
   final double? toLat;
   final double? toLng;
+  final List<EtrnTitle> titles;
 
   const Shipment({
     required this.id,
@@ -164,6 +367,7 @@ class Shipment {
     this.fromLng,
     this.toLat,
     this.toLng,
+    this.titles = const [],
   });
 
   bool get hasRoute =>
@@ -228,6 +432,7 @@ class Shipment {
       fromLng: jsonNumber(json, ['from_lng'])?.toDouble(),
       toLat: jsonNumber(json, ['to_lat'])?.toDouble(),
       toLng: jsonNumber(json, ['to_lng'])?.toDouble(),
+      titles: parseEtrnTitles(json),
     );
   }
 }
@@ -270,6 +475,8 @@ class Trip {
   final String attorneyNumber;
   final String attorneyDate;
   final String attorneyUrl;
+  final List<StatusEvent> statusHistory;
+  final List<EtrnTitle> etrnTitles;
 
   const Trip({
     required this.id,
@@ -309,6 +516,8 @@ class Trip {
     this.attorneyNumber = '',
     this.attorneyDate = '',
     this.attorneyUrl = '',
+    this.statusHistory = const [],
+    this.etrnTitles = const [],
   });
 
   bool get canStart => status == 'created' || status == 'assigned';
@@ -357,7 +566,11 @@ class Trip {
   String get loadWindowLabel => formatTimeWindow(loadWindowFrom, loadWindowTo);
   String get unloadWindowLabel => formatTimeWindow(unloadWindowFrom, unloadWindowTo);
 
-  Trip copyWith({String? status, String? statusLabel}) {
+  Trip copyWith({
+    String? status,
+    String? statusLabel,
+    List<StatusEvent>? statusHistory,
+  }) {
     return Trip(
       id: id,
       number: number,
@@ -396,6 +609,8 @@ class Trip {
       attorneyNumber: attorneyNumber,
       attorneyDate: attorneyDate,
       attorneyUrl: attorneyUrl,
+      statusHistory: statusHistory ?? this.statusHistory,
+      etrnTitles: etrnTitles,
     );
   }
 
@@ -441,6 +656,9 @@ class Trip {
       attorneyNumber: pick(attorneyNumber, other.attorneyNumber),
       attorneyDate: pick(attorneyDate, other.attorneyDate),
       attorneyUrl: pick(attorneyUrl, other.attorneyUrl),
+      statusHistory:
+          statusHistory.isNotEmpty ? statusHistory : other.statusHistory,
+      etrnTitles: etrnTitles.isNotEmpty ? etrnTitles : other.etrnTitles,
     );
   }
 
@@ -539,6 +757,8 @@ class Trip {
       attorneyUrl: attorney == null
           ? jsonText(trip, ['attorney_url'])
           : jsonText(attorney, ['url', 'file_url', 'download_url']),
+      statusHistory: parseStatusHistory(trip),
+      etrnTitles: parseEtrnTitles(trip),
     );
   }
 

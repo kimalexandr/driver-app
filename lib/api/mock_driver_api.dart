@@ -79,6 +79,9 @@ class MockDriverApi implements DriverApi {
         address: 'г. Санкт-Петербург, пр. Невский, д. 1',
         comment: 'Разгрузка на складе №2',
       ),
+      statusHistory: [
+        StatusEvent(status: 'assigned', label: 'Назначен', at: '14.03.2024 18:40'),
+      ],
       shipments: [
         Shipment(
           id: 's1',
@@ -86,6 +89,19 @@ class MockDriverApi implements DriverApi {
           weightKg: 1000,
           volumeM3: 5,
           comment: 'Не кантовать',
+          titles: [
+            EtrnTitle(
+              code: 'T1',
+              name: 'Грузоотправитель',
+              signed: true,
+              signedAt: '14.03.2024 17:05',
+              signedBy: 'ООО «Грузовик»',
+            ),
+            const EtrnTitle(
+              code: 'T2',
+              name: 'Перевозчик, приём',
+            ),
+          ],
         ),
       ],
     ),
@@ -133,10 +149,54 @@ class MockDriverApi implements DriverApi {
       from: 'Тула',
       to: 'Рязань',
       dateStart: '10.03.2024 08:00',
+      dateEnd: '10.03.2024 16:00',
       vehicle: 'С003СС71',
       cargo: 'Упаковка',
       weightKg: 400,
       volumeM3: 2,
+      statusHistory: [
+        StatusEvent(status: 'assigned', label: 'Назначен', at: '09.03.2024 19:10'),
+        StatusEvent(status: 'in_transit', label: 'В пути', at: '10.03.2024 08:20'),
+        StatusEvent(status: 'delivered', label: 'Доставлено', at: '10.03.2024 15:48'),
+      ],
+      etrnTitles: [
+        EtrnTitle(
+          code: 'T1',
+          signed: true,
+          signedAt: '10.03.2024 08:05',
+          signedBy: 'ООО Отправитель',
+        ),
+        EtrnTitle(
+          code: 'T2',
+          signed: true,
+          signedAt: '10.03.2024 08:18',
+          signedBy: 'Иванов И.И.',
+        ),
+        EtrnTitle(
+          code: 'T3',
+          signed: true,
+          signedAt: '10.03.2024 15:40',
+          signedBy: 'ООО Получатель',
+        ),
+        EtrnTitle(
+          code: 'T4',
+          signed: true,
+          signedAt: '10.03.2024 15:46',
+          signedBy: 'Иванов И.И.',
+        ),
+      ],
+    ),
+    const Trip(
+      id: '4',
+      number: '014',
+      status: 'delivered',
+      statusLabel: 'Доставлено',
+      from: 'Воронеж',
+      to: 'Липецк',
+      dateStart: '12.03.2024 11:00',
+      dateEnd: '12.03.2024 17:30',
+      vehicle: 'Е014ЕЕ36',
+      cargo: 'Метизы',
     ),
   ];
 
@@ -231,9 +291,18 @@ class MockDriverApi implements DriverApi {
       throw const ApiException('Рейс не найден', statusCode: 404);
     }
     final current = _trips[index];
+    final label = status == 'in_transit' ? 'В пути' : 'Доставлено';
     final updated = current.copyWith(
       status: status,
-      statusLabel: status == 'in_transit' ? 'В пути' : 'Доставлено',
+      statusLabel: label,
+      statusHistory: [
+        ...current.statusHistory,
+        StatusEvent(
+          status: status,
+          label: label,
+          at: formatTripDate(DateTime.now().toIso8601String()),
+        ),
+      ],
     );
     _trips[index] = updated;
     return updated;

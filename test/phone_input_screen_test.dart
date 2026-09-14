@@ -36,6 +36,15 @@ void main() {
 
     expect(find.text('Госуслуги'), findsOneWidget);
     expect(find.text('Госключ'), findsOneWidget);
+    expect(find.text('+7'), findsOneWidget);
+    expect(find.text('+7 (___) ___-__-__'), findsOneWidget);
+    expect(find.text('(999) 123-45-67'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField), '9991234567');
+    await tester.pump();
+
+    expect(find.text('(999) 123-45-67'), findsWidgets);
+    expect(find.text('Код придёт на +7 (999) 123-45-67'), findsOneWidget);
 
     await tester.tap(find.text('Госуслуги'));
     await tester.pumpAndSettle();

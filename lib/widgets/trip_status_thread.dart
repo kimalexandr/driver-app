@@ -81,6 +81,7 @@ class ThreadStep {
   final String window;
   final String comment;
   final String hint;
+  final String changedAt;
   final double? lat;
   final double? lng;
 
@@ -95,6 +96,7 @@ class ThreadStep {
     this.window = '',
     this.comment = '',
     this.hint = '',
+    this.changedAt = '',
     this.lat,
     this.lng,
   });
@@ -127,6 +129,7 @@ List<ThreadStep> tripThreadSteps(Trip trip) {
       title: 'Назначен',
       phase: phaseOf('assigned', order),
       hint: 'Рейс выдан водителю',
+      changedAt: tripStatusChangedAt(trip, 'assigned'),
     ),
     ThreadStep(
       id: 'load',
@@ -141,6 +144,7 @@ List<ThreadStep> tripThreadSteps(Trip trip) {
       hint: phaseOf('load', order) == ThreadPhase.current
           ? (deadline?.headline ?? 'Сейчас нужно быть на погрузке')
           : '',
+      changedAt: tripStatusChangedAt(trip, 'load'),
       lat: trip.startLat,
       lng: trip.startLng,
     ),
@@ -149,6 +153,7 @@ List<ThreadStep> tripThreadSteps(Trip trip) {
       title: 'В пути',
       phase: phaseOf('transit', order),
       hint: _transitHint(trip, phaseOf('transit', order)),
+      changedAt: tripStatusChangedAt(trip, 'transit'),
     ),
     ThreadStep(
       id: 'unload',
@@ -163,6 +168,7 @@ List<ThreadStep> tripThreadSteps(Trip trip) {
       hint: phaseOf('unload', order) == ThreadPhase.current
           ? (deadline?.headline ?? 'Следующая точка — выгрузка')
           : '',
+      changedAt: tripStatusChangedAt(trip, 'unload'),
       lat: trip.finishLat,
       lng: trip.finishLng,
     ),
@@ -171,6 +177,7 @@ List<ThreadStep> tripThreadSteps(Trip trip) {
       title: 'Доставлено',
       phase: trip.isCompleted ? ThreadPhase.done : ThreadPhase.upcoming,
       hint: trip.isCompleted ? 'Рейс закрыт' : '',
+      changedAt: tripStatusChangedAt(trip, 'delivered'),
     ),
   ];
 }
@@ -199,6 +206,7 @@ List<ThreadStep> _stepsFromStops(
       title: 'Назначен',
       phase: phaseOf('assigned', ids),
       hint: 'Рейс выдан водителю',
+      changedAt: tripStatusChangedAt(trip, 'assigned'),
     ),
   ];
 
@@ -214,6 +222,7 @@ List<ThreadStep> _stepsFromStops(
           title: 'В пути',
           phase: phaseOf('transit', ids),
           hint: _transitHint(trip, phaseOf('transit', ids)),
+          changedAt: tripStatusChangedAt(trip, 'transit'),
         ),
       );
     }
@@ -225,6 +234,7 @@ List<ThreadStep> _stepsFromStops(
       title: 'Доставлено',
       phase: trip.isCompleted ? ThreadPhase.done : ThreadPhase.upcoming,
       hint: trip.isCompleted ? 'Рейс закрыт' : '',
+      changedAt: tripStatusChangedAt(trip, 'delivered'),
     ),
   );
   return steps;
@@ -284,6 +294,7 @@ ThreadStep _stepFromStop(
     window: window,
     comment: comment,
     hint: hint,
+    changedAt: tripStatusChangedAt(trip, id),
     lat: stop.lat,
     lng: stop.lng,
   );
@@ -351,7 +362,7 @@ class _StepTile extends StatelessWidget {
     final done = step.phase == ThreadPhase.done;
     final color = current
         ? AppColors.orange
-        : (done ? AppColors.green : AppColors.line);
+        : (done ? AppColors.navy : AppColors.line);
     final body = Padding(
       padding: const EdgeInsets.fromLTRB(10, 2, 4, 16),
       child: Column(
@@ -387,6 +398,24 @@ class _StepTile extends StatelessWidget {
                 ),
             ],
           ),
+          if (step.changedAt.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.sand,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Смена ${step.changedAt}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+          ],
           if (step.city.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
@@ -473,7 +502,7 @@ class _StepTile extends StatelessWidget {
                     child: Container(
                       width: 2,
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: done ? AppColors.green.withValues(alpha: 0.45) : AppColors.line,
+                      color: done ? AppColors.navy.withValues(alpha: 0.22) : AppColors.line,
                     ),
                   ),
               ],

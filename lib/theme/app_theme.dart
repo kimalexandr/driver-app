@@ -76,7 +76,7 @@ class StatusColors {
       case 'in_transit':
         return const Color(0xFFFFE8D2);
       case 'delivered':
-        return const Color(0xFFDCEFE3);
+        return const Color(0xFFE8E2D6);
       case 'assigned':
         return const Color(0xFFD9E6F5);
       default:
@@ -89,7 +89,7 @@ class StatusColors {
       case 'in_transit':
         return AppColors.orange;
       case 'delivered':
-        return AppColors.green;
+        return AppColors.navy;
       case 'assigned':
         return AppColors.ink;
       default:

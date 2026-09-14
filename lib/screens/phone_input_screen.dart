@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../api/api_exception.dart';
 import '../models/external_auth.dart';
@@ -7,6 +6,7 @@ import '../services/external_auth.dart';
 import '../services/phone.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ru_phone_field.dart';
 
 class PhoneInputScreen extends StatefulWidget {
   const PhoneInputScreen({super.key});
@@ -119,19 +119,13 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   style: TextStyle(fontSize: 16, color: AppColors.muted, height: 1.4),
                 ),
                 const SizedBox(height: 32),
-                TextFormField(
+                RuPhoneField(
                   controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Телефон',
-                    hintText: '79991234567',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (_) => setState(() {}),
                   validator: (value) {
                     final phone = normalizePhone(value ?? '');
                     if (phone.length != 11 || !phone.startsWith('7')) {
-                      return 'Формат: 79991234567';
+                      return 'Введите номер полностью: +7 (999) 123-45-67';
                     }
                     return null;
                   },

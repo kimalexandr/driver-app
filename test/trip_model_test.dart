@@ -200,4 +200,51 @@ void main() {
     expect(trip.loadWindowLabel, '09:00–12:00');
     expect(tripDistanceKm(trip), greaterThan(100));
   });
+
+  test('читает историю статусов и титулы ЭТрН', () {
+    final trip = Trip.fromJson({
+      'id': 8,
+      'number': 'E-8',
+      'status': 'in_transit',
+      'from': 'Москва',
+      'to': 'Тверь',
+      'assigned_at': '2024-03-14T18:40:00',
+      'in_transit_at': '2024-03-15T10:20:00',
+      'etrn': {
+        'titles': [
+          {
+            'code': 'T1',
+            'signed': true,
+            'signed_at': '2024-03-14T17:05:00',
+            'signed_by': 'ООО Склад',
+          },
+          {'code': 'T2', 'signed': false},
+        ],
+      },
+      'shipments': [
+        {
+          'id': 's1',
+          'title': 'Паллета',
+          'titles': [
+            {
+              'code': 'T3',
+              'signed_at': '2024-03-16T12:00:00',
+              'signed_by': 'ООО Магазин',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(trip.statusHistory.map((item) => item.status), ['assigned', 'in_transit']);
+    expect(tripStatusChangedAt(trip, 'assigned'), '14.03.2024 18:40');
+    expect(tripStatusChangedAt(trip, 'transit'), '15.03.2024 10:20');
+    expect(trip.etrnTitles.map((item) => item.code), ['T1', 'T2']);
+    expect(trip.etrnTitles.first.signed, isTrue);
+    expect(trip.shipments.single.titles.single.code, 'T3');
+    expect(tripMatchesQuery(trip, 'твер'), isTrue);
+    expect(tripMatchesQuery(trip, 'E-8'), isTrue);
+    expect(tripMatchesQuery(trip, '14.03'), isTrue);
+    expect(tripMatchesQuery(trip, 'Казань'), isFalse);
+  });
 }

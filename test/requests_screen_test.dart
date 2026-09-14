@@ -45,7 +45,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Рейс №003'), findsOneWidget);
-    expect(find.text('Доставлено'), findsOneWidget);
+    expect(find.text('Доставлено'), findsWidgets);
     expect(find.text('Рейс №001'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'Воронеж');
+    await tester.pump();
+
+    expect(find.text('Рейс №014'), findsOneWidget);
+    expect(find.text('Рейс №003'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '10.03');
+    await tester.pump();
+
+    expect(find.text('Рейс №003'), findsOneWidget);
+    expect(find.text('Рейс №014'), findsNothing);
   });
 }

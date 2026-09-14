@@ -170,7 +170,7 @@ class PepCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: on ? const Color(0xFF2F7D4F) : Colors.white.withValues(alpha: 0.1),
+        color: on ? AppColors.orange : Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

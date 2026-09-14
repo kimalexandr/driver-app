@@ -15,6 +15,9 @@ void main() {
     loadWindowFrom: '09:00',
     loadWindowTo: '12:00',
     distanceKm: 705,
+    statusHistory: [
+      StatusEvent(status: 'assigned', label: 'Назначен', at: '14.03.2024 18:40'),
+    ],
   );
 
   test('assigned trip highlights loading as current step', () {
@@ -22,7 +25,9 @@ void main() {
     expect(steps.map((step) => step.id).toList(),
         ['assigned', 'load', 'transit', 'unload', 'delivered']);
     expect(steps[0].phase, ThreadPhase.done);
+    expect(steps[0].changedAt, '14.03.2024 18:40');
     expect(steps[1].phase, ThreadPhase.current);
+    expect(steps[1].changedAt, '');
     expect(steps[1].title, 'Погрузка');
     expect(steps[1].window, '09:00–12:00');
     expect(steps[2].phase, ThreadPhase.upcoming);

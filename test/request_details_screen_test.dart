@@ -21,6 +21,9 @@ void main() {
       dispatcherPhone: '+79990001122',
       attorneyNumber: 'Д-17',
       attorneyDate: '01.03.2024',
+      statusHistory: [
+        StatusEvent(status: 'assigned', label: 'Назначен', at: '14.03.2024 18:40'),
+      ],
       vehicle: 'А001АА77',
       startAddress: 'г. Москва, ул. Ленина, д. 1',
       finishAddress: 'г. Санкт-Петербург, пр. Невский, д. 1',
@@ -38,7 +41,24 @@ void main() {
         company: 'ООО «Получатель»',
         phone: '+7 (999) 765-43-21',
       ),
-      shipments: [Shipment(id: 's1', title: 'Груз 1', weightKg: 1000, volumeM3: 5)],
+      shipments: [
+        Shipment(
+          id: 's1',
+          title: 'Груз 1',
+          weightKg: 1000,
+          volumeM3: 5,
+          titles: const [
+            EtrnTitle(
+              code: 'T1',
+              name: 'Грузоотправитель',
+              signed: true,
+              signedAt: '14.03.2024 17:05',
+              signedBy: 'ООО «Грузовик»',
+            ),
+            EtrnTitle(code: 'T2', name: 'Перевозчик, приём'),
+          ],
+        ),
+      ],
     );
 
     await tester.pumpWidget(const MaterialApp(
@@ -65,6 +85,10 @@ void main() {
     expect(find.text('Погрузка'), findsOneWidget);
     expect(find.text('Выгрузка'), findsOneWidget);
     expect(find.text('Сейчас'), findsOneWidget);
+    expect(find.text('Смена 14.03.2024 18:40'), findsOneWidget);
+    expect(find.text('T1'), findsOneWidget);
+    expect(find.text('T2'), findsOneWidget);
+    expect(find.textContaining('подписан'), findsWidgets);
     expect(find.textContaining('Опаздываете'), findsOneWidget);
     expect(find.textContaining('705 км'), findsWidgets);
     expect(find.text('Диспетчер'), findsOneWidget);

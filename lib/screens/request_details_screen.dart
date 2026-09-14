@@ -10,6 +10,7 @@ import '../services/location_service.dart';
 import '../services/yandex_maps.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
+import '../widgets/etrn_titles.dart';
 import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/trip_status_thread.dart';
@@ -65,7 +66,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
 
   void _showOk(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.green),
+      SnackBar(content: Text(message), backgroundColor: AppColors.navy),
     );
   }
 
@@ -182,6 +183,13 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     const SizedBox(height: 16),
                     _cargoCard(),
                   ],
+                  if (_showTripDocuments) ...[
+                    const SizedBox(height: 16),
+                    _card(
+                      title: 'Документы ЭТрН',
+                      child: EtrnTitlesBlock(titles: _trip.etrnTitles),
+                    ),
+                  ],
                   if (_showSender) ...[
                     const SizedBox(height: 16),
                     _partyCard(
@@ -237,6 +245,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       _trip.cargo.isNotEmpty ||
       _trip.totalWeightKg != null ||
       _trip.totalVolumeM3 != null;
+
+  bool get _showTripDocuments =>
+      _trip.etrnTitles.isNotEmpty &&
+      _trip.shipments.every((item) => item.titles.isEmpty);
 
   bool get _cargoNameAddsInfo {
     if (_trip.cargo.isEmpty) return false;
@@ -732,6 +744,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           const SizedBox(height: 8),
           Text(item.comment, style: const TextStyle(color: AppColors.muted)),
         ],
+        if (item.titles.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          EtrnTitlesBlock(titles: item.titles, compact: true),
+        ],
       ],
     );
   }
@@ -765,8 +781,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                         : () => _setStatus(_trip.canStart ? 'in_transit' : 'delivered'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 44),
-                      backgroundColor:
-                          _trip.canDeliver ? AppColors.green : AppColors.navy,
                     ),
                     child: Text(primaryLabel),
                   ),

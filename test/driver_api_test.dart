@@ -17,6 +17,8 @@ void main() {
     expect(normalizePhone('8 (999) 123-45-67'), '79991234567');
     expect(normalizePhone('+7 999 123-45-67'), '79991234567');
     expect(normalizePhone('79991234567'), '79991234567');
+    expect(normalizePhone('(999) 123-45-67'), '79991234567');
+    expect(normalizePhone('9991234567'), '79991234567');
   });
 
   test('служебный код 1111 подменяет debug_code', () {

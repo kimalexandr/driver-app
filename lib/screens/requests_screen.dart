@@ -30,6 +30,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   List<Trip> _trips = [];
   bool _loading = true;
   String? _error;
+  String _completedQuery = '';
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
@@ -38,6 +39,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   List<Trip> get _completed =>
       _trips.where((trip) => trip.isCompleted).toList();
+
+  List<Trip> get _completedVisible => _completed
+      .where((trip) => tripMatchesQuery(trip, _completedQuery))
+      .toList();
 
   @override
   void initState() {
@@ -160,7 +165,30 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 : TabBarView(
                     children: [
                       _list(_active, 'Нет назначенных рейсов'),
-                      _list(_completed, 'Нет завершённых рейсов'),
+                      Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            child: TextField(
+                              onChanged: (value) =>
+                                  setState(() => _completedQuery = value),
+                              textInputAction: TextInputAction.search,
+                              decoration: const InputDecoration(
+                                hintText: 'Номер, дата или точка',
+                                prefixIcon: Icon(Icons.search),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _list(
+                              _completedVisible,
+                              _completedQuery.trim().isEmpty
+                                  ? 'Нет завершённых рейсов'
+                                  : 'Нет рейсов по запросу',
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
       ),

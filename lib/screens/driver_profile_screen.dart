@@ -118,7 +118,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('ПЭП выпущена и хранится на этом телефоне'),
-          backgroundColor: AppColors.green,
+          backgroundColor: AppColors.navy,
         ),
       );
     } finally {
@@ -174,7 +174,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                 : (outcome.message ?? 'Откройте ${provider.title}'),
           ),
           backgroundColor:
-              outcome.session != null ? AppColors.green : AppColors.navy,
+              outcome.session != null ? AppColors.navy : AppColors.ink,
         ),
       );
       await _reloadPep();
