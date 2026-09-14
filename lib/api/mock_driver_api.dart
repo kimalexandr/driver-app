@@ -25,6 +25,7 @@ class MockDriverApi implements DriverApi {
       issueDate: '12.05.2020',
       issuedBy: 'ГИБДД',
       issueCity: 'Москва',
+      categories: ['B', 'C', 'CE'],
     ),
     passport: DriverPassport(
       series: '4510',

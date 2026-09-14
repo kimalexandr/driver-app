@@ -34,60 +34,43 @@ class RuPhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preview = formatRuPhonePretty(controller.text);
-    final complete = ruPhoneLocalDigits(controller.text).length == 10;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          onChanged: onChanged,
-          keyboardType: TextInputType.phone,
-          inputFormatters: const [RuPhoneInputFormatter()],
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
-            color: AppColors.navy,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-          decoration: InputDecoration(
-            labelText: 'Телефон',
-            hintText: '(999) 123-45-67',
-            hintStyle: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-              color: AppColors.muted.withValues(alpha: 0.45),
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-            prefixIcon: const SizedBox(
-              width: 56,
-              child: Center(
-                child: Text(
-                  '+7',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
-                ),
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      onChanged: onChanged,
+      keyboardType: TextInputType.phone,
+      inputFormatters: const [RuPhoneInputFormatter()],
+      style: const TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.4,
+        color: AppColors.navy,
+        fontFeatures: [FontFeature.tabularFigures()],
+      ),
+      decoration: InputDecoration(
+        labelText: 'Телефон',
+        hintText: '(999) 123-45-67',
+        hintStyle: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.4,
+          color: AppColors.muted.withValues(alpha: 0.45),
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+        prefixIcon: const SizedBox(
+          width: 56,
+          child: Center(
+            child: Text(
+              '+7',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          complete ? 'Код придёт на $preview' : preview,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: complete ? AppColors.navy : AppColors.muted,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

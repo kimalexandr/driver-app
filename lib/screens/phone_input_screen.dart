@@ -121,7 +121,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 const SizedBox(height: 32),
                 RuPhoneField(
                   controller: _phoneController,
-                  onChanged: (_) => setState(() {}),
                   validator: (value) {
                     final phone = normalizePhone(value ?? '');
                     if (phone.length != 11 || !phone.startsWith('7')) {

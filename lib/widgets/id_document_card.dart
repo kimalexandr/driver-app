@@ -193,9 +193,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
             if ((details.primaryVelocity ?? 0).abs() > 180) _flip();
           },
           onTap: _flip,
-          child: _back
-              ? _backFace(last, first, middle, place)
-              : _frontFace(last, first, middle, place),
+          child: _back ? _backFace() : _frontFace(last, first, middle, place),
         ),
         const SizedBox(height: 8),
         Row(
@@ -282,7 +280,8 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
     );
   }
 
-  Widget _backFace(String last, String first, String middle, String place) {
+  Widget _backFace() {
+    final categories = widget.license.openCategories;
     return _plastic(
       key: const ValueKey('vu-back'),
       child: Column(
@@ -290,7 +289,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'ОБОРОТ',
+            'ОТКРЫТЫЕ КАТЕГОРИИ',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
@@ -298,11 +297,43 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
               letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 10),
-          _vuLine('Номер', widget.license.displayNumber),
-          _vuLine('Выдано', widget.license.issueDate),
-          _vuLine('Кем', place),
-          _vuLine('Владелец', [last, first, middle].where((part) => part.isNotEmpty).join(' ')),
+          const SizedBox(height: 12),
+          if (categories.isEmpty)
+            const Text(
+              'Категории не указаны',
+              style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final code in categories)
+                  Container(
+                    width: 44,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF1E4B9C), width: 1.4),
+                    ),
+                    child: Text(
+                      code,
+                      style: const TextStyle(
+                        color: Color(0xFF1E4B9C),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          const SizedBox(height: 12),
+          const Text(
+            'Только открытые категории. Данные лицевой стороны — на другой стороне.',
+            style: TextStyle(color: AppColors.muted, fontSize: 11, height: 1.3),
+          ),
         ],
       ),
     );

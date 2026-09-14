@@ -171,6 +171,13 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
+                  if (_trip.allEtrnTitles.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _card(
+                      title: 'Документы ЭТрН',
+                      child: EtrnTitlesBlock(titles: _trip.allEtrnTitles),
+                    ),
+                  ],
                   _autoCard(),
                   if (_showTripComment) ...[
                     const SizedBox(height: 16),
@@ -182,13 +189,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                   if (_hasCargoBlock) ...[
                     const SizedBox(height: 16),
                     _cargoCard(),
-                  ],
-                  if (_showTripDocuments) ...[
-                    const SizedBox(height: 16),
-                    _card(
-                      title: 'Документы ЭТрН',
-                      child: EtrnTitlesBlock(titles: _trip.etrnTitles),
-                    ),
                   ],
                   if (_showSender) ...[
                     const SizedBox(height: 16),
@@ -245,10 +245,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       _trip.cargo.isNotEmpty ||
       _trip.totalWeightKg != null ||
       _trip.totalVolumeM3 != null;
-
-  bool get _showTripDocuments =>
-      _trip.etrnTitles.isNotEmpty &&
-      _trip.shipments.every((item) => item.titles.isEmpty);
 
   bool get _cargoNameAddsInfo {
     if (_trip.cargo.isEmpty) return false;
@@ -743,10 +739,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         if (item.comment.isNotEmpty && !_same(item.comment, item.title)) ...[
           const SizedBox(height: 8),
           Text(item.comment, style: const TextStyle(color: AppColors.muted)),
-        ],
-        if (item.titles.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          EtrnTitlesBlock(titles: item.titles, compact: true),
         ],
       ],
     );

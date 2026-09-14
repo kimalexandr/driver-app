@@ -59,5 +59,11 @@ void main() {
 
     expect(find.text('Рейс №003'), findsOneWidget);
     expect(find.text('Рейс №014'), findsNothing);
+
+    await tester.tap(find.byTooltip('Сбросить поиск'));
+    await tester.pump();
+
+    expect(find.text('Рейс №003'), findsOneWidget);
+    expect(find.text('Рейс №014'), findsOneWidget);
   });
 }

@@ -563,6 +563,30 @@ class Trip {
   bool get hasAttorney =>
       attorneyNumber.isNotEmpty || attorneyDate.isNotEmpty || attorneyUrl.isNotEmpty;
 
+  List<EtrnTitle> get allEtrnTitles {
+    final byCode = <String, EtrnTitle>{};
+    for (final title in etrnTitles) {
+      if (title.code.isNotEmpty) byCode[title.code] = title;
+    }
+    for (final shipment in shipments) {
+      for (final title in shipment.titles) {
+        if (title.code.isEmpty) continue;
+        final current = byCode[title.code];
+        if (current == null || (!current.signed && title.signed)) {
+          byCode[title.code] = title;
+        }
+      }
+    }
+    final order = ['T1', 'T2', 'T3', 'T4'];
+    final sorted = byCode.values.toList()
+      ..sort((a, b) {
+        final ai = order.indexOf(a.code);
+        final bi = order.indexOf(b.code);
+        return (ai < 0 ? 99 : ai).compareTo(bi < 0 ? 99 : bi);
+      });
+    return sorted;
+  }
+
   String get loadWindowLabel => formatTimeWindow(loadWindowFrom, loadWindowTo);
   String get unloadWindowLabel => formatTimeWindow(unloadWindowFrom, unloadWindowTo);
 

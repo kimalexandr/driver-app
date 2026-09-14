@@ -13,6 +13,7 @@ void main() {
           'issue_date': '2020-05-12',
           'issued_by': 'ГИБДД',
           'issue_city': 'Москва',
+          'categories': ['B', 'C', 'CE'],
         },
         'passport': {
           'series': '4510',
@@ -42,6 +43,7 @@ void main() {
     expect(driver.license.issueDate, '12.05.2020');
     expect(driver.license.issuedBy, 'ГИБДД');
     expect(driver.license.issueCity, 'Москва');
+    expect(driver.license.openCategories, ['B', 'C', 'CE']);
     expect(driver.passport.seriesNumber, '4510 123456');
     expect(driver.passport.displaySeriesNumber, '45 10  123456');
     expect(driver.passport.issueDate, '01.03.2015');

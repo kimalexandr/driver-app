@@ -5,21 +5,35 @@ class DriverLicense {
   final String issueDate;
   final String issuedBy;
   final String issueCity;
+  final List<String> categories;
 
   const DriverLicense({
     this.number = '',
     this.issueDate = '',
     this.issuedBy = '',
     this.issueCity = '',
+    this.categories = const [],
   });
 
   bool get hasContent =>
       number.isNotEmpty ||
       issueDate.isNotEmpty ||
       issuedBy.isNotEmpty ||
-      issueCity.isNotEmpty;
+      issueCity.isNotEmpty ||
+      categories.isNotEmpty;
 
   String get displayNumber => formatRuLicenseNumber(number);
+
+  List<String> get openCategories {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final raw in categories) {
+      final code = raw.trim().toUpperCase();
+      if (code.isEmpty || !seen.add(code)) continue;
+      result.add(code);
+    }
+    return result;
+  }
 
   factory DriverLicense.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const DriverLicense();
@@ -28,8 +42,41 @@ class DriverLicense {
       issueDate: formatDay(json['issue_date'] ?? json['issued_at'] ?? json['date']),
       issuedBy: jsonText(json, ['issued_by', 'issuer']),
       issueCity: jsonText(json, ['issue_city', 'city']),
+      categories: parseLicenseCategories(json),
     );
   }
+}
+
+List<String> parseLicenseCategories(Map<String, dynamic> json) {
+  final fromList = <String>[];
+  for (final key in ['categories', 'open_categories', 'category_list']) {
+    final value = json[key];
+    if (value is List) {
+      for (final item in value) {
+        if (item == null) continue;
+        if (item is Map) {
+          final code = jsonText(Map<String, dynamic>.from(item), [
+            'code',
+            'category',
+            'name',
+            'title',
+          ]);
+          if (code.isNotEmpty) fromList.add(code);
+        } else {
+          final text = item.toString().trim();
+          if (text.isNotEmpty && text != 'null') fromList.add(text);
+        }
+      }
+    }
+  }
+  if (fromList.isNotEmpty) return fromList;
+  final joined = jsonText(json, ['categories', 'category', 'categories_open']);
+  if (joined.isEmpty) return const [];
+  return joined
+      .split(RegExp(r'[,;/|\s]+'))
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
 }
 
 class DriverPassport {

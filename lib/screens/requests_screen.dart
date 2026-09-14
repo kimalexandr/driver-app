@@ -31,6 +31,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   bool _loading = true;
   String? _error;
   String _completedQuery = '';
+  final TextEditingController _completedSearch = TextEditingController();
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
@@ -48,6 +49,21 @@ class _RequestsScreenState extends State<RequestsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _completedSearch.dispose();
+    super.dispose();
+  }
+
+  void _setCompletedQuery(String value) {
+    setState(() => _completedQuery = value);
+  }
+
+  void _clearCompletedSearch() {
+    _completedSearch.clear();
+    _setCompletedQuery('');
   }
 
   Future<void> _load() async {
@@ -170,15 +186,36 @@ class _RequestsScreenState extends State<RequestsScreen> {
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                             child: TextField(
-                              onChanged: (value) =>
-                                  setState(() => _completedQuery = value),
+                              controller: _completedSearch,
+                              onChanged: _setCompletedQuery,
                               textInputAction: TextInputAction.search,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: 'Номер, дата или точка',
-                                prefixIcon: Icon(Icons.search),
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: _completedQuery.trim().isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Сбросить поиск',
+                                        onPressed: _clearCompletedSearch,
+                                        icon: const Icon(Icons.close),
+                                      ),
                               ),
                             ),
                           ),
+                          if (_completedQuery.trim().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Найдено: ${_completedVisible.length}',
+                                  style: const TextStyle(
+                                    color: AppColors.muted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
                           Expanded(
                             child: _list(
                               _completedVisible,

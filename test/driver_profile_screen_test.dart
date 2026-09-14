@@ -36,6 +36,15 @@ void main() {
     expect(find.byType(PassportDocumentCard), findsOneWidget);
     expect(find.byType(LicenseDocumentCard), findsOneWidget);
     expect(find.byType(RuLicensePlateBadge), findsOneWidget);
+
+    await tester.tap(find.text('Повернуть'));
+    await tester.pump();
+
+    expect(find.text('ОТКРЫТЫЕ КАТЕГОРИИ'), findsOneWidget);
+    expect(find.text('B'), findsOneWidget);
+    expect(find.text('C'), findsOneWidget);
+    expect(find.text('CE'), findsOneWidget);
+    expect(find.textContaining('12 34 567890'), findsNothing);
   });
 
   testWidgets('в профиле можно выпустить ПЭП', (tester) async {
