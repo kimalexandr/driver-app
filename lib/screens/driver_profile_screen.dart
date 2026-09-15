@@ -4,14 +4,19 @@ import '../api/api_exception.dart';
 import '../api/driver_api.dart';
 import '../models/driver_profile.dart';
 import '../models/external_auth.dart';
+import '../models/notification_prefs.dart';
 import '../models/pep.dart';
 import '../services/external_auth.dart';
+import '../services/local_notifications.dart';
 import '../services/max_digital_id.dart';
+import '../services/notification_prefs_store.dart';
 import '../services/pep_vault.dart';
+import '../services/push_registration.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/id_document_card.dart';
 import '../widgets/max_digital_id_card.dart';
+import '../widgets/notification_settings_card.dart';
 import '../widgets/pep_card.dart';
 import '../widgets/ru_license_plate.dart';
 
@@ -19,12 +24,14 @@ class DriverProfileScreen extends StatefulWidget {
   final DriverApi? api;
   final PepVault? pep;
   final MaxDigitalIdService? maxDigitalId;
+  final PushRegistration? push;
 
   const DriverProfileScreen({
     super.key,
     this.api,
     this.pep,
     this.maxDigitalId,
+    this.push,
   });
 
   @override
@@ -40,6 +47,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   bool _pepBusy = false;
   bool _maxLinked = false;
   bool _maxBusy = false;
+  NotificationPrefs _notifyPrefs = NotificationPrefs.defaults;
+  bool _notifyPermission = false;
+  bool _notifyBusy = false;
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
@@ -48,6 +58,13 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   MaxDigitalIdService get _maxId =>
       widget.maxDigitalId ?? MaxDigitalIdService();
+
+  PushRegistration get _push =>
+      widget.push ??
+      PushRegistration(
+        prefsStore: NotificationPrefsStore(),
+        notifications: LocalNotifications(),
+      );
 
   String get _owner {
     final driver = _driver;
@@ -99,6 +116,8 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     PepRecord? record;
     var linked = <AuthProviderKind>{};
     var maxLinked = false;
+    var notifyPrefs = NotificationPrefs.defaults;
+    var notifyPermission = false;
     try {
       record = await _vault.read(_owner);
       linked = await _vault.linkedProviders();
@@ -106,12 +125,79 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     try {
       maxLinked = await _maxId.isLinked(_owner);
     } catch (_) {}
+    try {
+      notifyPrefs = await _push.currentPrefs(_owner);
+      notifyPermission = await _push.hasPermission();
+    } catch (_) {}
     if (!mounted) return;
     setState(() {
       _pep = record;
       _linked = linked;
       _maxLinked = maxLinked;
+      _notifyPrefs = notifyPrefs;
+      _notifyPermission = notifyPermission;
     });
+  }
+
+  Future<void> _requestNotifyPermission() async {
+    setState(() => _notifyBusy = true);
+    try {
+      final granted = await _push.ensurePermission();
+      if (!mounted) return;
+      setState(() => _notifyPermission = granted);
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Разрешение на уведомления не выдано'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _notifyBusy = false);
+    }
+  }
+
+  Future<void> _saveNotifyPrefs(NotificationPrefs prefs) async {
+    setState(() {
+      _notifyBusy = true;
+      _notifyPrefs = prefs;
+    });
+    try {
+      await _push.savePrefs(_owner, prefs);
+    } finally {
+      if (mounted) setState(() => _notifyBusy = false);
+    }
+  }
+
+  Future<void> _testNotify() async {
+    setState(() => _notifyBusy = true);
+    try {
+      if (!_notifyPermission) {
+        final granted = await _push.ensurePermission();
+        if (!mounted) return;
+        setState(() => _notifyPermission = granted);
+        if (!granted) return;
+      }
+      await _push.notifications.showTest();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Тестовое уведомление отправлено'),
+          backgroundColor: AppColors.navy,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось показать уведомление'),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _notifyBusy = false);
+    }
   }
 
   Future<void> _openMaxDigitalId() async {
@@ -306,6 +392,16 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     onMarkLinked: () => _markMaxLinked(true),
                     onUnlink: () => _markMaxLinked(false),
                     onGuide: _openMaxGuide,
+                  ),
+                  const SizedBox(height: 24),
+                  _section('Уведомления'),
+                  NotificationSettingsCard(
+                    prefs: _notifyPrefs,
+                    permissionGranted: _notifyPermission,
+                    busy: _notifyBusy,
+                    onChanged: _saveNotifyPrefs,
+                    onRequestPermission: _requestNotifyPermission,
+                    onTest: _testNotify,
                   ),
                   const SizedBox(height: 24),
                   _section('Документы'),

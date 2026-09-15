@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phone_auth_app/api/mock_driver_api.dart';
 import 'package:phone_auth_app/screens/driver_profile_screen.dart';
+import 'package:phone_auth_app/services/local_notifications.dart';
 import 'package:phone_auth_app/services/max_digital_id.dart';
+import 'package:phone_auth_app/services/notification_prefs_store.dart';
 import 'package:phone_auth_app/services/pep_vault.dart';
+import 'package:phone_auth_app/services/push_registration.dart';
 import 'package:phone_auth_app/services/secure_kv.dart';
 import 'package:phone_auth_app/widgets/id_document_card.dart';
 import 'package:phone_auth_app/widgets/ru_license_plate.dart';
+
+PushRegistration _push(MemorySecureKv kv, {bool permission = true}) {
+  return PushRegistration(
+    prefsStore: NotificationPrefsStore(kv: kv),
+    notifications: FakeLocalNotifications(permissionGranted: permission),
+  );
+}
 
 void main() {
   testWidgets('профиль показывает паспорт и ВУ карточками', (tester) async {
@@ -16,6 +26,7 @@ void main() {
         api: MockDriverApi(),
         pep: PepVault(kv: kv),
         maxDigitalId: MaxDigitalIdService(kv: kv),
+        push: _push(kv),
       ),
     ));
     await tester.pump();
@@ -25,6 +36,10 @@ void main() {
     expect(find.text('Выпустить ПЭП'), findsOneWidget);
     expect(find.text('Цифровой профиль'), findsOneWidget);
     expect(find.text('Цифровой ID MAX'), findsOneWidget);
+    expect(find.text('Уведомления'), findsOneWidget);
+    expect(find.text('Пуш-уведомления'), findsOneWidget);
+    expect(find.text('Новые рейсы'), findsOneWidget);
+    expect(find.text('Смена статуса'), findsOneWidget);
     expect(find.text('Документы'), findsOneWidget);
     expect(find.text('ПАСПОРТ'), findsOneWidget);
     expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsOneWidget);
@@ -61,6 +76,7 @@ void main() {
         api: MockDriverApi(),
         pep: PepVault(kv: kv),
         maxDigitalId: MaxDigitalIdService(kv: kv),
+        push: _push(kv),
       ),
     ));
     await tester.pump();
@@ -76,5 +92,34 @@ void main() {
 
     expect(find.textContaining('Ключ '), findsOneWidget);
     expect(find.text('Отозвать подпись'), findsOneWidget);
+  });
+
+  testWidgets('в профиле есть управление уведомлениями', (tester) async {
+    final kv = MemorySecureKv();
+    final notifications = FakeLocalNotifications(permissionGranted: true);
+    await tester.pumpWidget(MaterialApp(
+      home: DriverProfileScreen(
+        api: MockDriverApi(),
+        pep: PepVault(kv: kv),
+        maxDigitalId: MaxDigitalIdService(kv: kv),
+        push: PushRegistration(
+          prefsStore: NotificationPrefsStore(kv: kv),
+          notifications: notifications,
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Уведомления'), findsOneWidget);
+    expect(find.text('Включить уведомления'), findsOneWidget);
+    expect(find.text('Новые рейсы'), findsOneWidget);
+    expect(find.text('Сроки погрузки и выгрузки'), findsOneWidget);
+    expect(find.text('Проверить'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Проверить'));
+    await tester.tap(find.text('Проверить'));
+    await tester.pump();
+    expect(notifications.testShown, 1);
   });
 }
