@@ -8,17 +8,11 @@ class LocalNotifications {
   static const channelName = 'Рейсы 7Rights';
 
   final FlutterLocalNotificationsPlugin _plugin;
-  final Future<PermissionStatus> Function()? _permissionStatus;
-  final Future<PermissionStatus> Function()? _requestPermission;
   bool _ready = false;
 
   LocalNotifications({
     FlutterLocalNotificationsPlugin? plugin,
-    Future<PermissionStatus> Function()? permissionStatus,
-    Future<PermissionStatus> Function()? requestPermission,
-  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
-        _permissionStatus = permissionStatus,
-        _requestPermission = requestPermission;
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
     if (_ready) return;
@@ -46,7 +40,7 @@ class LocalNotifications {
         defaultTargetPlatform != TargetPlatform.iOS) {
       return true;
     }
-    final status = await (_permissionStatus ?? Permission.notification.status);
+    final status = await Permission.notification.status;
     return status.isGranted || status.isLimited;
   }
 
@@ -56,8 +50,7 @@ class LocalNotifications {
         defaultTargetPlatform != TargetPlatform.iOS) {
       return true;
     }
-    final status =
-        await (_requestPermission ?? Permission.notification.request)();
+    final status = await Permission.notification.request();
     return status.isGranted || status.isLimited;
   }
 
@@ -87,19 +80,19 @@ class FakeLocalNotifications extends LocalNotifications {
   bool permissionGranted;
   int testShown = 0;
 
-  FakeLocalNotifications({this.permissionGranted = false})
-      : super(
-          permissionStatus: () async => permissionGranted
-              ? PermissionStatus.granted
-              : PermissionStatus.denied,
-          requestPermission: () async {
-            permissionGranted = true;
-            return PermissionStatus.granted;
-          },
-        );
+  FakeLocalNotifications({this.permissionGranted = false});
 
   @override
   Future<void> init() async {}
+
+  @override
+  Future<bool> hasPermission() async => permissionGranted;
+
+  @override
+  Future<bool> requestPermission() async {
+    permissionGranted = true;
+    return true;
+  }
 
   @override
   Future<void> showTest() async {
