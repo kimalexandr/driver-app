@@ -53,6 +53,12 @@ dev_dependencies:
   flutter_lints: ^2.0.0
   flutter_launcher_icons: ^0.14.3
 
+# objective_c 9.6.1 сломан: hook использует Architecture.arm64e, которого нет
+# в опубликованном code_assets (dart-lang/native#3640). Тянется через
+# path_provider_foundation / flutter_secure_storage.
+dependency_overrides:
+  objective_c: 9.6.0
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
