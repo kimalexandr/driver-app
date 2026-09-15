@@ -96,17 +96,22 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   }
 
   Future<void> _reloadPep() async {
+    PepRecord? record;
+    var linked = <AuthProviderKind>{};
+    var maxLinked = false;
     try {
-      final record = await _vault.read(_owner);
-      final linked = await _vault.linkedProviders();
-      final maxLinked = await _maxId.isLinked(_owner);
-      if (!mounted) return;
-      setState(() {
-        _pep = record;
-        _linked = linked;
-        _maxLinked = maxLinked;
-      });
+      record = await _vault.read(_owner);
+      linked = await _vault.linkedProviders();
     } catch (_) {}
+    try {
+      maxLinked = await _maxId.isLinked(_owner);
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _pep = record;
+      _linked = linked;
+      _maxLinked = maxLinked;
+    });
   }
 
   Future<void> _openMaxDigitalId() async {

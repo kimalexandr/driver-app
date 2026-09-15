@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phone_auth_app/api/mock_driver_api.dart';
 import 'package:phone_auth_app/screens/driver_profile_screen.dart';
+import 'package:phone_auth_app/services/max_digital_id.dart';
 import 'package:phone_auth_app/services/pep_vault.dart';
 import 'package:phone_auth_app/services/secure_kv.dart';
 import 'package:phone_auth_app/widgets/id_document_card.dart';
@@ -9,10 +10,12 @@ import 'package:phone_auth_app/widgets/ru_license_plate.dart';
 
 void main() {
   testWidgets('профиль показывает паспорт и ВУ карточками', (tester) async {
+    final kv = MemorySecureKv();
     await tester.pumpWidget(MaterialApp(
       home: DriverProfileScreen(
         api: MockDriverApi(),
-        pep: PepVault(kv: MemorySecureKv()),
+        pep: PepVault(kv: kv),
+        maxDigitalId: MaxDigitalIdService(kv: kv),
       ),
     ));
     await tester.pump();
@@ -20,6 +23,8 @@ void main() {
 
     expect(find.text('Подпись'), findsOneWidget);
     expect(find.text('Выпустить ПЭП'), findsOneWidget);
+    expect(find.text('Цифровой профиль'), findsOneWidget);
+    expect(find.text('Цифровой ID MAX'), findsOneWidget);
     expect(find.text('Документы'), findsOneWidget);
     expect(find.text('ПАСПОРТ'), findsOneWidget);
     expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsOneWidget);
@@ -50,24 +55,26 @@ void main() {
   });
 
   testWidgets('в профиле можно выпустить ПЭП', (tester) async {
+    final kv = MemorySecureKv();
     await tester.pumpWidget(MaterialApp(
       home: DriverProfileScreen(
         api: MockDriverApi(),
-        pep: PepVault(kv: MemorySecureKv()),
+        pep: PepVault(kv: kv),
+        maxDigitalId: MaxDigitalIdService(kv: kv),
       ),
     ));
     await tester.pump();
     await tester.pump();
 
+    await tester.ensureVisible(find.text('Выпустить ПЭП'));
     await tester.tap(find.text('Выпустить ПЭП'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CheckboxListTile));
     await tester.pump();
     await tester.tap(find.widgetWithText(TextButton, 'Выпустить'));
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('Ключ'), findsOneWidget);
+    expect(find.textContaining('Ключ '), findsOneWidget);
     expect(find.text('Отозвать подпись'), findsOneWidget);
   });
 }
