@@ -572,7 +572,10 @@ class Shipment {
       toLat: jsonNumber(json, ['to_lat'])?.toDouble(),
       toLng: jsonNumber(json, ['to_lng'])?.toDouble(),
       titles: parseEtrnTitles(json),
-      documents: parseEpdDocuments(json),
+      documents: jsonMaps(json, ['documents', 'epd_documents'])
+          .map(EpdDocument.fromJson)
+          .where((item) => item.titles.isNotEmpty || item.number.isNotEmpty)
+          .toList(),
       attorneyNumber: attorney == null
           ? jsonText(json, ['attorney_number'])
           : jsonText(attorney, ['number']),
@@ -760,17 +763,42 @@ class Trip {
   List<EpdDocument> get allEpdDocuments {
     final byKey = <String, EpdDocument>{};
     void put(EpdDocument doc) {
+      final hasIdentity = doc.id.isNotEmpty || doc.number.isNotEmpty;
+      if (!hasIdentity) {
+        final sameKind = byKey.values.where((item) => item.kind == doc.kind);
+        if (sameKind.isNotEmpty) {
+          final target = sameKind.first;
+          final codes = target.titles.map((t) => t.code).toSet();
+          final merged = [
+            ...target.titles,
+            ...doc.titles.where((t) => !codes.contains(t.code)),
+          ];
+          final key = byKey.entries.firstWhere((e) => identical(e.value, target)).key;
+          byKey[key] = EpdDocument(
+            id: target.id,
+            kind: target.kind,
+            kindLabel: target.kindLabel,
+            number: target.number,
+            status: target.status,
+            documentDate: target.documentDate,
+            titles: merged,
+          );
+          return;
+        }
+      }
+
       final key = [
         doc.kind,
         doc.id.isNotEmpty ? doc.id : doc.number,
-        if (doc.id.isEmpty && doc.number.isEmpty) doc.titles.map((t) => t.code).join(','),
+        if (!hasIdentity) doc.titles.map((t) => t.code).join(','),
       ].join('|');
       final current = byKey[key];
       if (current == null) {
         byKey[key] = doc;
         return;
       }
-      if (doc.titles.length > current.titles.length) {
+      if (doc.titles.length > current.titles.length ||
+          (doc.number.isNotEmpty && current.number.isEmpty)) {
         byKey[key] = doc;
       }
     }
