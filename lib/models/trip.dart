@@ -144,6 +144,9 @@ class EtrnTitle {
   final bool signed;
   final String signedAt;
   final String signedBy;
+  final String kind;
+  final String kindLabel;
+  final String documentNumber;
 
   const EtrnTitle({
     required this.code,
@@ -151,9 +154,20 @@ class EtrnTitle {
     this.signed = false,
     this.signedAt = '',
     this.signedBy = '',
+    this.kind = 'waybill',
+    this.kindLabel = '',
+    this.documentNumber = '',
   });
 
-  String get title => name.isNotEmpty ? name : etrnTitleName(code);
+  String get title {
+    if (name.isNotEmpty) return name;
+    return etrnTitleName(code, kind);
+  }
+
+  String get resolvedKindLabel {
+    if (kindLabel.isNotEmpty) return kindLabel;
+    return epdKindLabel(kind);
+  }
 
   String get statusLine {
     if (!signed) return 'не подписан';
@@ -165,8 +179,11 @@ class EtrnTitle {
   }
 
   factory EtrnTitle.fromJson(Map<String, dynamic> json) {
+    final kind = jsonText(json, ['kind', 'document_kind']).isNotEmpty
+        ? jsonText(json, ['kind', 'document_kind'])
+        : 'waybill';
     final code = normalizeEtrnCode(
-      jsonText(json, ['code', 'title_code', 'kind', 'type', 'title']),
+      jsonText(json, ['code', 'title_code', 'type', 'title']),
     );
     final signedAt = formatTripDate(
       json['signed_at'] ?? json['signedAt'] ?? json['date'],
@@ -178,11 +195,68 @@ class EtrnTitle {
       signed: signedFlag == true || signedFlag == 1 || signedAt.isNotEmpty,
       signedAt: signedAt,
       signedBy: jsonText(json, ['signed_by', 'signer', 'company']),
+      kind: kind,
+      kindLabel: jsonText(json, ['kind_label', 'kindLabel']),
+      documentNumber: jsonText(json, ['document_number', 'number']),
     );
   }
 }
 
-String etrnTitleName(String code) {
+class EpdDocument {
+  final String id;
+  final String kind;
+  final String kindLabel;
+  final String number;
+  final String status;
+  final String documentDate;
+  final List<EtrnTitle> titles;
+
+  const EpdDocument({
+    this.id = '',
+    this.kind = 'waybill',
+    this.kindLabel = '',
+    this.number = '',
+    this.status = '',
+    this.documentDate = '',
+    this.titles = const [],
+  });
+
+  String get resolvedKindLabel {
+    if (kindLabel.isNotEmpty) return kindLabel;
+    return epdKindLabel(kind);
+  }
+
+  factory EpdDocument.fromJson(Map<String, dynamic> json) {
+    final kind = jsonText(json, ['kind', 'document_kind']).isNotEmpty
+        ? jsonText(json, ['kind', 'document_kind'])
+        : 'waybill';
+    final titles = jsonMaps(json, ['titles', 'items']).map((item) {
+      final merged = Map<String, dynamic>.from(item);
+      merged.putIfAbsent('kind', () => kind);
+      if (json['kind_label'] != null) {
+        merged.putIfAbsent('kind_label', () => json['kind_label']);
+      }
+      merged.putIfAbsent(
+        'document_number',
+        () => json['number'] ?? json['document_number'],
+      );
+      return EtrnTitle.fromJson(merged);
+    }).where((item) => item.code.isNotEmpty).toList();
+    return EpdDocument(
+      id: jsonText(json, ['id']),
+      kind: kind,
+      kindLabel: jsonText(json, ['kind_label', 'kindLabel']),
+      number: jsonText(json, ['number', 'document_number']),
+      status: jsonText(json, ['status', 'status_label']),
+      documentDate: formatTripDate(json['document_date'] ?? json['date']),
+      titles: titles,
+    );
+  }
+}
+
+String etrnTitleName(String code, [String kind = 'waybill']) {
+  if (kind == 'forwarding_order') return 'Титул ПЭ $code';
+  if (kind == 'forwarding_receipt') return 'Титул ЭР $code';
   switch (code.toUpperCase()) {
     case 'T1':
       return 'Грузоотправитель';
@@ -194,6 +268,18 @@ String etrnTitleName(String code) {
       return 'Перевозчик, сдача';
     default:
       return code;
+  }
+}
+
+String epdKindLabel(String kind) {
+  switch (kind) {
+    case 'forwarding_order':
+      return 'ПЭ · Поручение экспедитору';
+    case 'forwarding_receipt':
+      return 'ЭР · Экспедиторская расписка';
+    case 'waybill':
+    default:
+      return 'ЭТрН';
   }
 }
 
@@ -216,6 +302,36 @@ List<EtrnTitle> parseEtrnTitles(Map<String, dynamic> json) {
       .map(EtrnTitle.fromJson)
       .where((item) => item.code.isNotEmpty)
       .toList();
+}
+
+List<EpdDocument> parseEpdDocuments(Map<String, dynamic> json) {
+  final nested = jsonMap(json, ['etrn', 'documents']);
+  final maps = [
+    ...jsonMaps(json, ['documents', 'epd_documents']),
+    if (nested != null) ...jsonMaps(nested, ['documents', 'items']),
+  ];
+  final docs = maps
+      .map(EpdDocument.fromJson)
+      .where((item) => item.titles.isNotEmpty || item.number.isNotEmpty)
+      .toList();
+  if (docs.isNotEmpty) return docs;
+
+  // Fallback: group flat titles into synthetic documents by kind.
+  final titles = parseEtrnTitles(json);
+  if (titles.isEmpty) return const [];
+  final byKind = <String, List<EtrnTitle>>{};
+  for (final title in titles) {
+    byKind.putIfAbsent(title.kind, () => []).add(title);
+  }
+  return byKind.entries.map((entry) {
+    final first = entry.value.first;
+    return EpdDocument(
+      kind: entry.key,
+      kindLabel: first.resolvedKindLabel,
+      number: first.documentNumber,
+      titles: entry.value,
+    );
+  }).toList();
 }
 
 List<StatusEvent> parseStatusHistory(Map<String, dynamic> json) {
@@ -256,7 +372,7 @@ String tripStatusChangedAt(Trip trip, String stepId) {
 
   switch (stepId) {
     case 'assigned':
-      return pick(['assigned', 'created', 'назнач']);
+      return pick(['assigned', 'created', 'назнач', 'создан']);
     case 'load':
       final loaded = pick(['loaded', 'loading', 'погруз']);
       if (loaded.isNotEmpty) return loaded;
@@ -348,6 +464,7 @@ class Shipment {
   final double? toLat;
   final double? toLng;
   final List<EtrnTitle> titles;
+  final List<EpdDocument> documents;
   final String attorneyNumber;
   final String attorneyDate;
   final String attorneyUrl;
@@ -382,6 +499,7 @@ class Shipment {
     this.toLat,
     this.toLng,
     this.titles = const [],
+    this.documents = const [],
     this.attorneyNumber = '',
     this.attorneyDate = '',
     this.attorneyUrl = '',
@@ -454,6 +572,7 @@ class Shipment {
       toLat: jsonNumber(json, ['to_lat'])?.toDouble(),
       toLng: jsonNumber(json, ['to_lng'])?.toDouble(),
       titles: parseEtrnTitles(json),
+      documents: parseEpdDocuments(json),
       attorneyNumber: attorney == null
           ? jsonText(json, ['attorney_number'])
           : jsonText(attorney, ['number']),
@@ -507,6 +626,7 @@ class Trip {
   final String attorneyUrl;
   final List<StatusEvent> statusHistory;
   final List<EtrnTitle> etrnTitles;
+  final List<EpdDocument> epdDocuments;
 
   const Trip({
     required this.id,
@@ -548,6 +668,7 @@ class Trip {
     this.attorneyUrl = '',
     this.statusHistory = const [],
     this.etrnTitles = const [],
+    this.epdDocuments = const [],
   });
 
   bool get canStart => status == 'created' || status == 'assigned';
@@ -636,23 +757,95 @@ class Trip {
     return '';
   }
 
+  List<EpdDocument> get allEpdDocuments {
+    final byKey = <String, EpdDocument>{};
+    void put(EpdDocument doc) {
+      final key = [
+        doc.kind,
+        doc.id.isNotEmpty ? doc.id : doc.number,
+        if (doc.id.isEmpty && doc.number.isEmpty) doc.titles.map((t) => t.code).join(','),
+      ].join('|');
+      final current = byKey[key];
+      if (current == null) {
+        byKey[key] = doc;
+        return;
+      }
+      if (doc.titles.length > current.titles.length) {
+        byKey[key] = doc;
+      }
+    }
+
+    for (final doc in epdDocuments) {
+      put(doc);
+    }
+    for (final shipment in shipments) {
+      for (final doc in shipment.documents) {
+        put(doc);
+      }
+    }
+    if (byKey.isEmpty) {
+      final titles = allEtrnTitles;
+      if (titles.isEmpty) return const [];
+      final grouped = <String, List<EtrnTitle>>{};
+      for (final title in titles) {
+        grouped.putIfAbsent(title.kind, () => []).add(title);
+      }
+      return grouped.entries
+          .map(
+            (entry) => EpdDocument(
+              kind: entry.key,
+              kindLabel: entry.value.first.resolvedKindLabel,
+              number: entry.value.first.documentNumber,
+              titles: entry.value,
+            ),
+          )
+          .toList();
+    }
+
+    const order = ['waybill', 'forwarding_order', 'forwarding_receipt'];
+    final docs = byKey.values.toList()
+      ..sort((a, b) {
+        final ai = order.indexOf(a.kind);
+        final bi = order.indexOf(b.kind);
+        return (ai < 0 ? 99 : ai).compareTo(bi < 0 ? 99 : bi);
+      });
+    return docs;
+  }
+
   List<EtrnTitle> get allEtrnTitles {
-    final byCode = <String, EtrnTitle>{};
+    final byKey = <String, EtrnTitle>{};
+    void put(EtrnTitle title) {
+      if (title.code.isEmpty) return;
+      final key = '${title.kind}|${title.code}|${title.documentNumber}';
+      final current = byKey[key];
+      if (current == null || (!current.signed && title.signed)) {
+        byKey[key] = title;
+      }
+    }
+
     for (final title in etrnTitles) {
-      if (title.code.isNotEmpty) byCode[title.code] = title;
+      put(title);
     }
     for (final shipment in shipments) {
       for (final title in shipment.titles) {
-        if (title.code.isEmpty) continue;
-        final current = byCode[title.code];
-        if (current == null || (!current.signed && title.signed)) {
-          byCode[title.code] = title;
+        put(title);
+      }
+      for (final doc in shipment.documents) {
+        for (final title in doc.titles) {
+          put(title);
         }
       }
     }
-    final order = ['T1', 'T2', 'T3', 'T4'];
-    final sorted = byCode.values.toList()
+    for (final doc in epdDocuments) {
+      for (final title in doc.titles) {
+        put(title);
+      }
+    }
+    const order = ['T1', 'T2', 'T3', 'T4'];
+    final sorted = byKey.values.toList()
       ..sort((a, b) {
+        final kindCmp = a.kind.compareTo(b.kind);
+        if (kindCmp != 0) return kindCmp;
         final ai = order.indexOf(a.code);
         final bi = order.indexOf(b.code);
         return (ai < 0 ? 99 : ai).compareTo(bi < 0 ? 99 : bi);
@@ -708,6 +901,7 @@ class Trip {
       attorneyUrl: attorneyUrl,
       statusHistory: statusHistory ?? this.statusHistory,
       etrnTitles: etrnTitles,
+      epdDocuments: epdDocuments,
     );
   }
 
@@ -756,6 +950,7 @@ class Trip {
       statusHistory:
           statusHistory.isNotEmpty ? statusHistory : other.statusHistory,
       etrnTitles: etrnTitles.isNotEmpty ? etrnTitles : other.etrnTitles,
+      epdDocuments: epdDocuments.isNotEmpty ? epdDocuments : other.epdDocuments,
     );
   }
 
@@ -856,6 +1051,7 @@ class Trip {
           : jsonText(attorney, ['url', 'file_url', 'download_url']),
       statusHistory: parseStatusHistory(trip),
       etrnTitles: parseEtrnTitles(trip),
+      epdDocuments: parseEpdDocuments(trip),
     );
   }
 
@@ -992,14 +1188,20 @@ _RouteEnd _routeEnd(
 
 String formatTripDate(Object? raw) {
   if (raw == null) return '';
-  final value = raw.toString();
-  final parsed = DateTime.tryParse(value);
-  if (parsed == null) return value;
+  final value = raw.toString().trim();
+  if (value.isEmpty) return '';
+  final parsed = DateTime.tryParse(value.replaceFirst(' ', 'T'));
+  if (parsed == null) {
+    // Уже отформатировано на бэкенде / в UI (dd.mm.yyyy HH:mm).
+    return value;
+  }
   final dd = parsed.day.toString().padLeft(2, '0');
   final mm = parsed.month.toString().padLeft(2, '0');
   final hh = parsed.hour.toString().padLeft(2, '0');
   final min = parsed.minute.toString().padLeft(2, '0');
-  if (hh == '00' && min == '00' && !value.contains('T') && !value.contains(' ')) {
+  final hasClock =
+      value.contains('T') || value.contains(' ') || value.contains(':');
+  if (!hasClock && hh == '00' && min == '00') {
     return '$dd.$mm.${parsed.year}';
   }
   return '$dd.$mm.${parsed.year} $hh:$min';

@@ -84,6 +84,46 @@ class MockDriverApi implements DriverApi {
       statusHistory: [
         StatusEvent(status: 'assigned', label: 'Назначен', at: '14.03.2024 18:40'),
       ],
+      epdDocuments: [
+        EpdDocument(
+          id: '1',
+          kind: 'waybill',
+          kindLabel: 'ЭТрН',
+          number: 'ЭТ-001',
+          titles: [
+            EtrnTitle(
+              code: 'T1',
+              name: 'Грузоотправитель',
+              signed: true,
+              signedAt: '14.03.2024 17:05',
+              signedBy: 'ООО «Грузовик»',
+              kind: 'waybill',
+              documentNumber: 'ЭТ-001',
+            ),
+            EtrnTitle(
+              code: 'T2',
+              name: 'Перевозчик, приём',
+              kind: 'waybill',
+              documentNumber: 'ЭТ-001',
+            ),
+          ],
+        ),
+        EpdDocument(
+          id: '2',
+          kind: 'forwarding_order',
+          kindLabel: 'ПЭ · Поручение экспедитору',
+          number: 'ПЭ-17',
+          titles: [
+            EtrnTitle(
+              code: 'T1',
+              signed: true,
+              signedAt: '14.03.2024 16:50',
+              kind: 'forwarding_order',
+              documentNumber: 'ПЭ-17',
+            ),
+          ],
+        ),
+      ],
       shipments: [
         Shipment(
           id: 's1',

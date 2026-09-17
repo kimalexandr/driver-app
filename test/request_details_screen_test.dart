@@ -87,8 +87,9 @@ void main() {
     expect(find.text('Погрузка'), findsOneWidget);
     expect(find.text('Выгрузка'), findsOneWidget);
     expect(find.text('Сейчас'), findsOneWidget);
-    expect(find.text('14.03.2024 18:40'), findsOneWidget);
-    expect(find.text('Документы ЭТрН'), findsOneWidget);
+    expect(find.textContaining('14.03.2024 18:40'), findsWidgets);
+    expect(find.text('История статусов'), findsOneWidget);
+    expect(find.text('ЭТрН и договоры'), findsOneWidget);
     expect(find.text('T1'), findsOneWidget);
     expect(find.text('T2'), findsOneWidget);
     expect(find.text('Подписан'), findsWidgets);

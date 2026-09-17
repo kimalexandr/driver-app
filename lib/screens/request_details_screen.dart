@@ -357,15 +357,24 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     ],
                     TripDeadlineBanner(trip: _trip),
                     TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
+                    if (_trip.statusHistory.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _statusHistoryCard(),
+                    ],
                     const SizedBox(height: 16),
                     _card(
-                      title: 'Документы ЭТрН',
-                      child: _trip.allEtrnTitles.isEmpty
+                      title: 'ЭТрН и договоры',
+                      child: _trip.allEpdDocuments.isEmpty &&
+                              _trip.allEtrnTitles.isEmpty
                           ? const Text(
-                              'Документы ЭТрН появятся здесь, когда их пришлют.',
+                              'ЭТрН, ПЭ и ЭР появятся здесь, когда документы пришлют.',
                               style: TextStyle(color: AppColors.muted, height: 1.35),
                             )
-                          : EtrnTitlesBlock(titles: _trip.allEtrnTitles),
+                          : EtrnTitlesBlock(
+                              documents: _trip.allEpdDocuments,
+                              titles: _trip.allEtrnTitles,
+                              compact: true,
+                            ),
                     ),
                     if (_showAutoCard) ...[
                       const SizedBox(height: 16),
@@ -554,6 +563,60 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _statusHistoryCard() {
+    final events = _trip.statusHistory
+        .where((event) => event.at.isNotEmpty)
+        .toList();
+    if (events.isEmpty) return const SizedBox.shrink();
+    return _card(
+      title: 'История статусов',
+      child: Column(
+        children: [
+          for (var i = 0; i < events.length; i++) ...[
+            if (i > 0) const Divider(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(Icons.schedule, size: 16, color: AppColors.navy),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        events[i].label.isNotEmpty
+                            ? events[i].label
+                            : (events[i].status.isNotEmpty
+                                ? events[i].status
+                                : 'Статус'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        events[i].at,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

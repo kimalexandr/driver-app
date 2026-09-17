@@ -251,6 +251,32 @@ void main() {
           },
           {'code': 'T2', 'signed': false},
         ],
+        'documents': [
+          {
+            'id': 1,
+            'kind': 'waybill',
+            'kind_label': 'ЭТрН',
+            'number': 'ЭТ-11',
+            'titles': [
+              {
+                'code': 'T1',
+                'signed': true,
+                'signed_at': '2024-03-14T17:05:00',
+                'signed_by': 'ООО Склад',
+              },
+              {'code': 'T2', 'signed': false},
+            ],
+          },
+          {
+            'id': 2,
+            'kind': 'forwarding_order',
+            'kind_label': 'ПЭ · Поручение экспедитору',
+            'number': 'ПЭ-5',
+            'titles': [
+              {'code': 'T1', 'signed': true, 'signed_at': '2024-03-14T16:00:00'},
+            ],
+          },
+        ],
       },
       'shipments': [
         {
@@ -273,6 +299,11 @@ void main() {
     expect(trip.etrnTitles.map((item) => item.code), ['T1', 'T2']);
     expect(trip.etrnTitles.first.signed, isTrue);
     expect(trip.shipments.single.titles.single.code, 'T3');
+    expect(trip.epdDocuments.map((item) => item.kind), [
+      'waybill',
+      'forwarding_order',
+    ]);
+    expect(trip.allEpdDocuments.map((item) => item.number), ['ЭТ-11', 'ПЭ-5']);
     expect(tripMatchesQuery(trip, 'твер'), isTrue);
     expect(tripMatchesQuery(trip, 'E-8'), isTrue);
     expect(tripMatchesQuery(trip, '14.03'), isTrue);
