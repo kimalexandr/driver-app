@@ -71,7 +71,10 @@ void main() {
     expect(find.text('B'), findsOneWidget);
     expect(find.text('C'), findsOneWidget);
     expect(find.text('CE'), findsOneWidget);
-    expect(find.textContaining('12 34 567890'), findsNothing);
+    expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsNothing);
+    expect(find.text('Лицевая'), findsOneWidget);
+    // Номер остаётся в подписи плитки под sheet.
+    expect(find.textContaining('12 34 567890'), findsOneWidget);
   });
 
   testWidgets('в профиле можно выпустить ПЭП', (tester) async {
