@@ -178,11 +178,11 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 showDebugHints
                     ? 'Введите 4-значный код из SMS или служебный код'
                     : 'Введите 4-значный код из SMS',
-                style: const TextStyle(fontSize: 16, color: AppColors.muted),
+                style: TextStyle(fontSize: 16, color: AppColors.muted),
               ),
               if (showDebugHints) ...[
                 const SizedBox(height: 16),
