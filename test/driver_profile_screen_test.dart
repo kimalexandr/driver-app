@@ -22,7 +22,7 @@ PushRegistration _push(MemorySecureKv kv, {bool permission = true}) {
 }
 
 void main() {
-  testWidgets('профиль показывает паспорт и ВУ карточками', (tester) async {
+  testWidgets('профиль открывает паспорт и ВУ из плиток', (tester) async {
     final kv = MemorySecureKv();
     await tester.pumpWidget(MaterialApp(
       home: DriverProfileScreen(
@@ -36,35 +36,36 @@ void main() {
     await tester.pump();
 
     expect(find.text('Уведомления'), findsOneWidget);
-    expect(find.text('Документы и подпись'), findsOneWidget);
+    expect(find.text('Документы'), findsOneWidget);
+    expect(find.text('Паспорт'), findsOneWidget);
+    expect(find.text('Водительское'), findsOneWidget);
+    expect(find.text('Подпись и MAX'), findsOneWidget);
     expect(find.text('Выйти'), findsOneWidget);
     expect(find.byType(RuLicensePlateBadge), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Документы и подпись'));
-    await tester.tap(find.text('Документы и подпись'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Выпустить ПЭП'), findsOneWidget);
-    expect(find.text('Цифровой ID MAX'), findsOneWidget);
-    expect(find.text('ПАСПОРТ'), findsOneWidget);
-    expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsOneWidget);
-    expect(find.text('Повернуть'), findsOneWidget);
-    expect(find.text('Копировать'), findsOneWidget);
-    expect(find.text('45 10  123456'), findsOneWidget);
-    expect(find.textContaining('12 34 567890'), findsWidgets);
-    expect(find.text('Дата выдачи'), findsOneWidget);
-    expect(find.text('01.03.2015'), findsOneWidget);
-    expect(find.textContaining('12.05.2020'), findsWidgets);
-    expect(find.textContaining('ГИБДД, Москва'), findsWidgets);
     expect(find.text('Иванов Иван Иванович'), findsOneWidget);
     expect(find.text('ООО Перевозчик'), findsOneWidget);
+
+    await tester.tap(find.text('Паспорт'));
+    await tester.pumpAndSettle();
+    expect(find.text('ПАСПОРТ'), findsOneWidget);
+    expect(find.text('45 10  123456'), findsOneWidget);
+    expect(find.text('Дата выдачи'), findsOneWidget);
+    expect(find.text('01.03.2015'), findsOneWidget);
     expect(find.byType(PassportDocumentCard), findsOneWidget);
+    Navigator.of(tester.element(find.byType(PassportDocumentCard))).pop();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Водительское'));
+    await tester.pumpAndSettle();
+    expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsOneWidget);
+    expect(find.textContaining('12 34 567890'), findsWidgets);
+    expect(find.textContaining('12.05.2020'), findsWidgets);
+    expect(find.textContaining('ГИБДД, Москва'), findsWidgets);
     expect(find.byType(LicenseDocumentCard), findsOneWidget);
 
     await tester.ensureVisible(find.text('Повернуть'));
-    await tester.pump();
     await tester.tap(find.text('Повернуть'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('ОТКРЫТЫЕ КАТЕГОРИИ'), findsOneWidget);
     expect(find.text('B'), findsOneWidget);
@@ -86,8 +87,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Документы и подпись'));
-    await tester.tap(find.text('Документы и подпись'));
+    await tester.ensureVisible(find.text('Подпись и MAX'));
+    await tester.tap(find.text('Подпись и MAX'));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Выпустить ПЭП'));

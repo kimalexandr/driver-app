@@ -34,13 +34,13 @@ class PepCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.navy, AppColors.ink],
+          colors: [Color(0xFF0F172A), Color(0xFF134E4A)],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.28),
-            blurRadius: 16,
+            color: const Color(0xFF0D9488).withValues(alpha: 0.22),
+            blurRadius: 18,
             offset: const Offset(0, 8),
           ),
         ],

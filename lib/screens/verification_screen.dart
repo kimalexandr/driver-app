@@ -190,7 +190,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFE8D2),
+                    color: AppColors.softTeal,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
@@ -200,8 +200,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
                         ? 'Служебный код: ${ServiceLogin.code}  ·  код сервера: $debugCode'
                         : 'Служебный код: ${ServiceLogin.code}',
                     style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.orange,
+                      fontSize: 15,
+                      color: Color(0xFF0F766E),
                       fontWeight: FontWeight.w700,
                     ),
                   ),

@@ -68,9 +68,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 const SizedBox(height: 28),
                 const Text(
                   '7Rights',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.orange,
                     letterSpacing: 0.4,
                   ),

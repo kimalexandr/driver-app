@@ -42,13 +42,13 @@ class _TripDeadlineBannerState extends State<TripDeadlineBanner> {
     if (deadline == null) return const SizedBox.shrink();
     final color = switch (deadline.urgency) {
       DeadlineUrgency.late => AppColors.red,
-      DeadlineUrgency.soon => AppColors.orange,
+      DeadlineUrgency.soon => AppColors.amber,
       DeadlineUrgency.ok => AppColors.green,
     };
     final bg = switch (deadline.urgency) {
-      DeadlineUrgency.late => const Color(0xFFF8D9D5),
-      DeadlineUrgency.soon => const Color(0xFFFFE8D2),
-      DeadlineUrgency.ok => const Color(0xFFDCEFE3),
+      DeadlineUrgency.late => const Color(0xFFFFE4E6),
+      DeadlineUrgency.soon => const Color(0xFFFEF3C7),
+      DeadlineUrgency.ok => const Color(0xFFD1FAE5),
     };
     if (widget.compact) {
       return Text(

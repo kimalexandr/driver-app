@@ -363,6 +363,7 @@ class _StepTile extends StatelessWidget {
     final color = current
         ? AppColors.orange
         : (done ? AppColors.navy : AppColors.line);
+    final currentBg = current ? AppColors.softTeal : Colors.transparent;
     final body = Padding(
       padding: const EdgeInsets.fromLTRB(10, 2, 4, 16),
       child: Column(
@@ -397,13 +398,13 @@ class _StepTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFE8D2),
+                    color: AppColors.softTeal,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: const Text(
                     'Сейчас',
                     style: TextStyle(
-                      color: AppColors.orange,
+                      color: Color(0xFF0F766E),
                       fontWeight: FontWeight.w800,
                       fontSize: 11,
                     ),
@@ -447,7 +448,7 @@ class _StepTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: current ? AppColors.orange : AppColors.muted,
+                color: current ? const Color(0xFF0F766E) : AppColors.muted,
               ),
             ),
           ],
@@ -460,7 +461,7 @@ class _StepTile extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: step.hint.startsWith('Опаздываете')
                     ? AppColors.red
-                    : (current ? AppColors.orange : AppColors.muted),
+                    : (current ? const Color(0xFF0F766E) : AppColors.muted),
               ),
             ),
           ],
@@ -524,7 +525,7 @@ class _StepTile extends StatelessWidget {
               curve: Curves.easeOutCubic,
               margin: EdgeInsets.only(bottom: current ? 4 : 0),
               decoration: BoxDecoration(
-                color: current ? const Color(0xFFFFF6EC) : Colors.transparent,
+                color: currentBg,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: _maybeTappable(body),

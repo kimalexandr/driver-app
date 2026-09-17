@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
 
+/// Холодная логистическая палитра: slate + teal, без «песочного» фона.
 class AppColors {
-  static const navy = Color(0xFF12263A);
-  static const ink = Color(0xFF1B3654);
-  static const sand = Color(0xFFF6F1E8);
+  static const navy = Color(0xFF0F172A);
+  static const ink = Color(0xFF1E293B);
+  static const sand = Color(0xFFF4F7FB);
   static const card = Color(0xFFFFFFFF);
-  static const orange = Color(0xFFE07A2F);
-  static const green = Color(0xFF2F7D4F);
-  static const red = Color(0xFFC44536);
-  static const muted = Color(0xFF6B7785);
-  static const line = Color(0xFFE6DED0);
+  static const orange = Color(0xFF0D9488);
+  static const amber = Color(0xFFF59E0B);
+  static const green = Color(0xFF059669);
+  static const red = Color(0xFFE11D48);
+  static const muted = Color(0xFF64748B);
+  static const line = Color(0xFFE2E8F0);
+  static const softTeal = Color(0xFFCCFBF1);
+  static const softSky = Color(0xFFE0F2FE);
 
-  static const nightBg = Color(0xFF0E1620);
-  static const nightCard = Color(0xFF1A2430);
-  static const nightLine = Color(0xFF2A3644);
+  static const nightBg = Color(0xFF020617);
+  static const nightCard = Color(0xFF0F172A);
+  static const nightLine = Color(0xFF1E293B);
 }
 
 class AppTheme {
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.navy,
+      seedColor: AppColors.orange,
       primary: AppColors.navy,
       secondary: AppColors.orange,
       surface: AppColors.sand,
@@ -34,14 +38,15 @@ class AppTheme {
       appBarBg: AppColors.navy,
       appBarFg: Colors.white,
       inputFill: Colors.white,
+      buttonBg: AppColors.navy,
     );
   }
 
   static ThemeData dark() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.navy,
-      primary: const Color(0xFF7EB6E8),
-      secondary: AppColors.orange,
+      seedColor: AppColors.orange,
+      primary: const Color(0xFF5EEAD4),
+      secondary: AppColors.amber,
       surface: AppColors.nightCard,
       error: AppColors.red,
       brightness: Brightness.dark,
@@ -53,7 +58,8 @@ class AppTheme {
       line: AppColors.nightLine,
       appBarBg: AppColors.nightCard,
       appBarFg: Colors.white,
-      inputFill: AppColors.nightCard,
+      inputFill: const Color(0xFF111827),
+      buttonBg: const Color(0xFF0F766E),
     );
   }
 
@@ -65,6 +71,7 @@ class AppTheme {
     required Color appBarBg,
     required Color appBarFg,
     required Color inputFill,
+    required Color buttonBg,
   }) {
     return ThemeData(
       useMaterial3: true,
@@ -77,10 +84,16 @@ class AppTheme {
         foregroundColor: appBarFg,
         elevation: 0,
         centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: appBarFg,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -92,26 +105,35 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: scheme.primary, width: 1.6),
+          borderSide: const BorderSide(color: AppColors.orange, width: 1.8),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.navy,
+          backgroundColor: buttonBg,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 54),
+          elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: scheme.primary,
+          foregroundColor: AppColors.navy,
           minimumSize: const Size(double.infinity, 54),
-          side: BorderSide(color: scheme.primary),
+          side: const BorderSide(color: AppColors.line, width: 1.4),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.softTeal,
+        labelStyle: const TextStyle(
+          color: AppColors.navy,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -121,24 +143,24 @@ class StatusColors {
   static Color background(String status) {
     switch (status) {
       case 'in_transit':
-        return const Color(0xFFFFE8D2);
+        return AppColors.softTeal;
       case 'delivered':
-        return const Color(0xFFE8E2D6);
+        return const Color(0xFFE2E8F0);
       case 'assigned':
-        return const Color(0xFFD9E6F5);
+        return AppColors.softSky;
       default:
-        return const Color(0xFFEFEBE3);
+        return const Color(0xFFF1F5F9);
     }
   }
 
   static Color foreground(String status) {
     switch (status) {
       case 'in_transit':
-        return AppColors.orange;
+        return const Color(0xFF0F766E);
       case 'delivered':
         return AppColors.navy;
       case 'assigned':
-        return AppColors.ink;
+        return const Color(0xFF0369A1);
       default:
         return AppColors.muted;
     }

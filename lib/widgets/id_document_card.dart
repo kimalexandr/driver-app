@@ -5,17 +5,206 @@ import '../models/driver_profile.dart';
 import '../theme/app_theme.dart';
 
 List<String> splitRuName(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+  final parts =
+      name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
   return parts.toList();
 }
 
-Future<void> copyDocumentText(BuildContext context, String label, String value) async {
+Future<void> copyDocumentText(
+  BuildContext context,
+  String label,
+  String value,
+) async {
   final text = value.trim();
   if (text.isEmpty) return;
   await Clipboard.setData(ClipboardData(text: text));
   if (!context.mounted) return;
+  HapticFeedback.selectionClick();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('$label скопирован')),
+  );
+}
+
+/// Компактная плитка: один тап открывает документ в sheet.
+class DocumentOpenTile extends StatelessWidget {
+  final IconData icon;
+  final Color accent;
+  final String title;
+  final String subtitle;
+  final VoidCallback onOpen;
+
+  const DocumentOpenTile({
+    super.key,
+    required this.icon,
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onOpen();
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> showPassportSheet({
+  required BuildContext context,
+  required DriverPassport passport,
+  required String holderName,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: AppColors.sand,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Паспорт',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Нажмите на карточку, чтобы скопировать номер',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 14),
+              PassportDocumentCard(
+                passport: passport,
+                holderName: holderName,
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<void> showLicenseSheet({
+  required BuildContext context,
+  required DriverLicense license,
+  required String holderName,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: AppColors.sand,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            20 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Водительское удостоверение',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Свайп или «Повернуть» — категории на обороте',
+                  style: TextStyle(color: AppColors.muted),
+                ),
+                const SizedBox(height: 14),
+                LicenseDocumentCard(
+                  license: license,
+                  holderName: holderName,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -39,28 +228,36 @@ class PassportDocumentCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => copyDocumentText(context, 'Паспорт', passport.seriesNumber),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Ink(
           decoration: BoxDecoration(
-            color: const Color(0xFFF3E4E8),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFC9A0A8)),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFF1F3), Color(0xFFFCE7EB)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFF0C2CB)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6B1D2A).withValues(alpha: 0.18),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+                color: const Color(0xFFBE123C).withValues(alpha: 0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             child: Column(
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  color: const Color(0xFF8B2C3A),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF9F1239), Color(0xFFBE123C)],
+                    ),
+                  ),
                   child: const Text(
                     'РОССИЙСКАЯ ФЕДЕРАЦИЯ',
                     textAlign: TextAlign.center,
@@ -68,25 +265,30 @@ class PassportDocumentCard extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 78,
-                        height: 100,
+                        width: 82,
+                        height: 104,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE7D3D8),
-                          border: Border.all(color: const Color(0xFFB98992)),
+                          color: const Color(0xFFF5D0D8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE8A4B0)),
                         ),
-                        child: const Icon(Icons.person, size: 42, color: Color(0xFF8B2C3A)),
+                        child: const Icon(
+                          Icons.person,
+                          size: 44,
+                          color: Color(0xFF9F1239),
+                        ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,10 +296,10 @@ class PassportDocumentCard extends StatelessWidget {
                             const Text(
                               'ПАСПОРТ',
                               style: TextStyle(
-                                color: Color(0xFF8B2C3A),
+                                color: Color(0xFF9F1239),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 1.1,
+                                letterSpacing: 1.2,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -114,13 +316,14 @@ class PassportDocumentCard extends StatelessWidget {
                 ),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  color: const Color(0xFFE8D5DA),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  color: const Color(0xFFF8D7DE),
                   child: Text(
                     passport.hasContent
                         ? 'Нажмите, чтобы скопировать номер'
                         : 'Серия и номер не указаны',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                    style: const TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
                 ),
               ],
@@ -134,17 +337,21 @@ class PassportDocumentCard extends StatelessWidget {
   Widget _field(String label, String value) {
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF8B2C3A), fontSize: 10)),
+          Text(
+            label,
+            style: const TextStyle(color: Color(0xFF9F1239), fontSize: 10),
+          ),
           Text(
             value.toUpperCase(),
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: AppColors.navy,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -170,7 +377,10 @@ class LicenseDocumentCard extends StatefulWidget {
 class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
   bool _back = false;
 
-  void _flip() => setState(() => _back = !_back);
+  void _flip() {
+    HapticFeedback.selectionClick();
+    setState(() => _back = !_back);
+  }
 
   Future<void> _copy() {
     return copyDocumentText(context, 'ВУ', widget.license.number);
@@ -190,27 +400,50 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
       children: [
         GestureDetector(
           onHorizontalDragEnd: (details) {
-            if ((details.primaryVelocity ?? 0).abs() > 180) _flip();
+            if ((details.primaryVelocity ?? 0).abs() > 160) _flip();
           },
           onTap: _flip,
-          child: _back ? _backFace() : _frontFace(last, first, middle, place),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: _back
+                ? _backFace()
+                : _frontFace(last, first, middle, place),
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: _flip,
-                icon: const Icon(Icons.rotate_right, size: 18),
-                label: const Text('Повернуть'),
+                icon: const Icon(Icons.flip, size: 18),
+                label: Text(_back ? 'Лицевая' : 'Повернуть'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navy,
+                  minimumSize: const Size(0, 48),
+                ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: widget.license.hasContent ? _copy : null,
                 icon: const Icon(Icons.copy_outlined, size: 18),
                 label: const Text('Копировать'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                ),
               ),
             ),
           ],
@@ -237,15 +470,16 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: AppColors.navy,
-                    letterSpacing: 0.3,
+                    letterSpacing: 0.4,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E4B9C),
-                    borderRadius: BorderRadius.circular(4),
+                    color: const Color(0xFF0369A1),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
                     'RUS',
@@ -256,8 +490,11 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                _vuLine('1, 2', [last, first, middle].where((part) => part.isNotEmpty).join(' ')),
+                const SizedBox(height: 10),
+                _vuLine(
+                  '1, 2',
+                  [last, first, middle].where((part) => part.isNotEmpty).join(' '),
+                ),
                 _vuLine('4a–4b', widget.license.issueDate),
                 _vuLine('5', widget.license.displayNumber),
                 _vuLine('8', place),
@@ -266,14 +503,18 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
           ),
           const SizedBox(width: 10),
           Container(
-            width: 72,
-            height: 92,
+            width: 76,
+            height: 96,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8DDE1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFC9B4BA)),
+              color: const Color(0xFFE0F2FE),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFBAE6FD)),
             ),
-            child: const Icon(Icons.badge_outlined, color: Color(0xFF8B3A5A), size: 36),
+            child: const Icon(
+              Icons.badge_outlined,
+              color: Color(0xFF0369A1),
+              size: 36,
+            ),
           ),
         ],
       ),
@@ -291,17 +532,20 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
           const Text(
             'ОТКРЫТЫЕ КАТЕГОРИИ',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF8B3A5A),
+              color: Color(0xFF0F766E),
               letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (categories.isEmpty)
             const Text(
               'Категории не указаны',
-              style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600,
+              ),
             )
           else
             Wrap(
@@ -310,29 +554,36 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
               children: [
                 for (final code in categories)
                   Container(
-                    width: 44,
-                    height: 36,
+                    width: 48,
+                    height: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF1E4B9C), width: 1.4),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF0D9488),
+                        width: 1.5,
+                      ),
                     ),
                     child: Text(
                       code,
                       style: const TextStyle(
-                        color: Color(0xFF1E4B9C),
+                        color: Color(0xFF0F766E),
                         fontWeight: FontWeight.w800,
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                     ),
                   ),
               ],
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           const Text(
-            'Только открытые категории. Данные лицевой стороны — на другой стороне.',
-            style: TextStyle(color: AppColors.muted, fontSize: 11, height: 1.3),
+            'Свайпните или нажмите «Лицевая», чтобы вернуться.',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 12,
+              height: 1.35,
+            ),
           ),
         ],
       ),
@@ -343,21 +594,21 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
     return Container(
       key: key,
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 160),
-      padding: const EdgeInsets.all(14),
+      constraints: const BoxConstraints(minHeight: 168),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF7F4), Color(0xFFF3D5DC)],
+          colors: [Color(0xFFF0FDFA), Color(0xFFE0F2FE)],
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD7A8B4)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF99F6E4)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8B3A5A).withValues(alpha: 0.18),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF0D9488).withValues(alpha: 0.14),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -368,7 +619,7 @@ class _LicenseDocumentCardState extends State<LicenseDocumentCard> {
   Widget _vuLine(String label, String value) {
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 5),
       child: Text(
         '$label  $value',
         maxLines: 2,

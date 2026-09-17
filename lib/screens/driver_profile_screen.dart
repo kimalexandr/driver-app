@@ -380,13 +380,32 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     _vehicleCard(auto!),
                   ],
                   const SizedBox(height: 20),
-                  OutlinedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Выйти'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.red,
-                      side: const BorderSide(color: AppColors.red),
+                  _section('Документы'),
+                  DocumentOpenTile(
+                    icon: Icons.menu_book_rounded,
+                    accent: const Color(0xFFBE123C),
+                    title: 'Паспорт',
+                    subtitle: passport.hasContent
+                        ? passport.displaySeriesNumber
+                        : 'Открыть карточку',
+                    onOpen: () => showPassportSheet(
+                      context: context,
+                      passport: passport,
+                      holderName: driver?.name ?? '',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DocumentOpenTile(
+                    icon: Icons.badge_outlined,
+                    accent: const Color(0xFF0D9488),
+                    title: 'Водительское',
+                    subtitle: license.hasContent
+                        ? license.displayNumber
+                        : 'Открыть карточку',
+                    onOpen: () => showLicenseSheet(
+                      context: context,
+                      license: license,
+                      holderName: driver?.name ?? '',
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -402,13 +421,14 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   ),
                   const SizedBox(height: 24),
                   Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    data: Theme.of(context)
+                        .copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
                       tilePadding: EdgeInsets.zero,
                       childrenPadding: const EdgeInsets.only(bottom: 8),
                       initiallyExpanded: false,
                       title: const Text(
-                        'Документы и подпись',
+                        'Подпись и MAX',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -416,7 +436,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                         ),
                       ),
                       subtitle: const Text(
-                        'ПЭП, MAX, паспорт и ВУ',
+                        'ПЭП, Госуслуги, Цифровой ID',
                         style: TextStyle(color: AppColors.muted, fontSize: 13),
                       ),
                       children: [
@@ -426,7 +446,8 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                           busy: _pepBusy,
                           onIssue: _issuePep,
                           onRevoke: _revokePep,
-                          onGosuslugi: () => _external(AuthProviderKind.gosuslugi),
+                          onGosuslugi: () =>
+                              _external(AuthProviderKind.gosuslugi),
                           onGoskey: () => _external(AuthProviderKind.goskey),
                         ),
                         const SizedBox(height: 16),
@@ -434,16 +455,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                           busy: _maxBusy,
                           onOpenMax: _openMaxDigitalId,
                           onGuide: _openMaxGuide,
-                        ),
-                        const SizedBox(height: 16),
-                        PassportDocumentCard(
-                          passport: passport,
-                          holderName: driver?.name ?? '',
-                        ),
-                        const SizedBox(height: 12),
-                        LicenseDocumentCard(
-                          license: license,
-                          holderName: driver?.name ?? '',
                         ),
                       ],
                     ),
@@ -453,6 +464,16 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     _section('Контакты'),
                     _contactCard(driver),
                   ],
+                  const SizedBox(height: 28),
+                  OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Выйти'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.red,
+                      side: const BorderSide(color: AppColors.red),
+                    ),
+                  ),
                 ],
                 ),
               ),
@@ -467,14 +488,15 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
-          radius: 34,
+          radius: 36,
           backgroundColor: AppColors.navy,
           child: Text(
             _initials(name),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
             ),
           ),
         ),
