@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 /// Абстракция над RuStore Push SDK (удобно подменять в тестах).
 abstract class RuStorePushGateway {
   Future<bool> available();

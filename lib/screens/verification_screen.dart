@@ -154,7 +154,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final debugCode = _challenge?.debugCode;
-    final showDebugHints = kDebugMode;
+    const showDebugHints = kDebugMode;
     final mm = (_resendIn ~/ 60).toString();
     final ss = (_resendIn % 60).toString().padLeft(2, '0');
     return Scaffold(
