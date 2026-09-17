@@ -9,7 +9,7 @@ class RuStorePushSdkBridge {
 
   static Future<String?> getToken() async {
     final token = await RustorePushClient.getToken();
-    if (token is! String || token.isEmpty) return null;
+    if (token.isEmpty) return null;
     return token;
   }
 
@@ -20,8 +20,9 @@ class RuStorePushSdkBridge {
   }) {
     return RustorePushClient.attachCallbacks(
       onNewToken: (token) {
-        if (token is String && token.isNotEmpty) {
-          onNewToken(token);
+        final value = '$token';
+        if (value.isNotEmpty) {
+          onNewToken(value);
         }
       },
       onMessageReceived: (message) {
