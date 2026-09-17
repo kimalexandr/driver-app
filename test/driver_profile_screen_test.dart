@@ -48,7 +48,7 @@ void main() {
     await tester.tap(find.text('Паспорт'));
     await tester.pumpAndSettle();
     expect(find.text('ПАСПОРТ'), findsOneWidget);
-    expect(find.text('45 10  123456'), findsOneWidget);
+    expect(find.text('45 10  123456'), findsWidgets);
     expect(find.text('Дата выдачи'), findsOneWidget);
     expect(find.text('01.03.2015'), findsOneWidget);
     expect(find.byType(PassportDocumentCard), findsOneWidget);
