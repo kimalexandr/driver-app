@@ -196,9 +196,40 @@ void main() {
     final deadline = tripDeadline(trip, DateTime(2026, 9, 13, 12));
     expect(deadline, isNotNull);
     expect(deadline!.late, isTrue);
+    expect(deadline.urgency, DeadlineUrgency.late);
     expect(deadline.headline, contains('погрузк'));
+    expect(trip.nextActionHint, contains('В пути'));
+    expect(trip.copyWith(status: 'delivered').nextActionHint, 'Рейс закрыт');
     expect(trip.loadWindowLabel, '09:00–12:00');
     expect(tripDistanceKm(trip), greaterThan(100));
+
+    final soonTrip = Trip(
+      id: trip.id,
+      number: trip.number,
+      status: trip.status,
+      statusLabel: trip.statusLabel,
+      from: trip.from,
+      to: trip.to,
+      dateStart: '13.09.2026 13:00',
+    );
+    expect(
+      tripDeadline(soonTrip, DateTime(2026, 9, 13, 12))?.urgency,
+      DeadlineUrgency.soon,
+    );
+
+    final okTrip = Trip(
+      id: trip.id,
+      number: trip.number,
+      status: trip.status,
+      statusLabel: trip.statusLabel,
+      from: trip.from,
+      to: trip.to,
+      dateStart: '14.09.2026 12:00',
+    );
+    expect(
+      tripDeadline(okTrip, DateTime(2026, 9, 13, 12))?.urgency,
+      DeadlineUrgency.ok,
+    );
   });
 
   test('читает историю статусов и титулы ЭТрН', () {

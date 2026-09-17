@@ -45,7 +45,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   String? _error;
   bool _loading = true;
   bool _pepBusy = false;
-  bool _maxLinked = false;
   bool _maxBusy = false;
   NotificationPrefs _notifyPrefs = NotificationPrefs.defaults;
   bool _notifyPermission = false;
@@ -117,15 +116,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   Future<void> _reloadPep() async {
     PepRecord? record;
     var linked = <AuthProviderKind>{};
-    var maxLinked = false;
     var notifyPrefs = NotificationPrefs.defaults;
     var notifyPermission = false;
     try {
       record = await _vault.read(_owner);
       linked = await _vault.linkedProviders();
-    } catch (_) {}
-    try {
-      maxLinked = await _maxId.isLinked(_owner);
     } catch (_) {}
     try {
       notifyPrefs = await _push.currentPrefs(_owner);
@@ -135,7 +130,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     setState(() {
       _pep = record;
       _linked = linked;
-      _maxLinked = maxLinked;
       _notifyPrefs = notifyPrefs;
       _notifyPermission = notifyPermission;
       _pushStatus = _push.lastStatus;
@@ -228,22 +222,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             backgroundColor: AppColors.red,
           ),
         );
-        return;
       }
-      if (!_maxLinked) {
-        await _maxId.setLinked(_owner, true);
-        await _reloadPep();
-      }
-    } finally {
-      if (mounted) setState(() => _maxBusy = false);
-    }
-  }
-
-  Future<void> _markMaxLinked(bool value) async {
-    setState(() => _maxBusy = true);
-    try {
-      await _maxId.setLinked(_owner, value);
-      await _reloadPep();
     } finally {
       if (mounted) setState(() => _maxBusy = false);
     }
@@ -396,26 +375,19 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                         style: const TextStyle(color: AppColors.red),
                       ),
                     ),
-                  const SizedBox(height: 24),
-                  _section('Подпись'),
-                  PepCard(
-                    record: _pep,
-                    linked: _linked,
-                    busy: _pepBusy,
-                    onIssue: _issuePep,
-                    onRevoke: _revokePep,
-                    onGosuslugi: () => _external(AuthProviderKind.gosuslugi),
-                    onGoskey: () => _external(AuthProviderKind.goskey),
-                  ),
-                  const SizedBox(height: 24),
-                  _section('Цифровой профиль'),
-                  MaxDigitalIdCard(
-                    linked: _maxLinked,
-                    busy: _maxBusy,
-                    onOpenMax: _openMaxDigitalId,
-                    onMarkLinked: () => _markMaxLinked(true),
-                    onUnlink: () => _markMaxLinked(false),
-                    onGuide: _openMaxGuide,
+                  if (auto?.hasContent ?? false) ...[
+                    const SizedBox(height: 16),
+                    _vehicleCard(auto!),
+                  ],
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Выйти'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.red,
+                      side: const BorderSide(color: AppColors.red),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   _section('Уведомления'),
@@ -429,41 +401,58 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     onTest: _testNotify,
                   ),
                   const SizedBox(height: 24),
-                  _section('Документы'),
-                  const Text(
-                    'Паспорт копируется нажатием. ВУ можно перевернуть и скопировать.',
-                    style: TextStyle(color: AppColors.muted, fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-                  PassportDocumentCard(
-                    passport: passport,
-                    holderName: driver?.name ?? '',
-                  ),
-                  const SizedBox(height: 12),
-                  LicenseDocumentCard(
-                    license: license,
-                    holderName: driver?.name ?? '',
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                      initiallyExpanded: false,
+                      title: const Text(
+                        'Документы и подпись',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'ПЭП, MAX, паспорт и ВУ',
+                        style: TextStyle(color: AppColors.muted, fontSize: 13),
+                      ),
+                      children: [
+                        PepCard(
+                          record: _pep,
+                          linked: _linked,
+                          busy: _pepBusy,
+                          onIssue: _issuePep,
+                          onRevoke: _revokePep,
+                          onGosuslugi: () => _external(AuthProviderKind.gosuslugi),
+                          onGoskey: () => _external(AuthProviderKind.goskey),
+                        ),
+                        const SizedBox(height: 16),
+                        MaxDigitalIdCard(
+                          busy: _maxBusy,
+                          onOpenMax: _openMaxDigitalId,
+                          onGuide: _openMaxGuide,
+                        ),
+                        const SizedBox(height: 16),
+                        PassportDocumentCard(
+                          passport: passport,
+                          holderName: driver?.name ?? '',
+                        ),
+                        const SizedBox(height: 12),
+                        LicenseDocumentCard(
+                          license: license,
+                          holderName: driver?.name ?? '',
+                        ),
+                      ],
+                    ),
                   ),
                   if (_hasContacts(driver)) ...[
                     const SizedBox(height: 24),
                     _section('Контакты'),
                     _contactCard(driver),
                   ],
-                  if (auto?.hasContent ?? false) ...[
-                    const SizedBox(height: 24),
-                    _section('Машина'),
-                    _vehicleCard(auto!),
-                  ],
-                  const SizedBox(height: 20),
-                  OutlinedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Выйти'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.red,
-                      side: const BorderSide(color: AppColors.red),
-                    ),
-                  ),
                 ],
                 ),
               ),

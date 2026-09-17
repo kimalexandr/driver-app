@@ -28,22 +28,24 @@ void main() {
       home: DriverProfileScreen(
         api: MockDriverApi(),
         pep: PepVault(kv: kv),
-        maxDigitalId: MaxDigitalIdService(kv: kv),
+        maxDigitalId: MaxDigitalIdService(),
         push: _push(kv),
       ),
     ));
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Подпись'), findsOneWidget);
-    expect(find.text('Выпустить ПЭП'), findsOneWidget);
-    expect(find.text('Цифровой профиль'), findsOneWidget);
-    expect(find.text('Цифровой ID MAX'), findsOneWidget);
     expect(find.text('Уведомления'), findsOneWidget);
-    expect(find.text('Пуш-уведомления'), findsOneWidget);
-    expect(find.text('Новые рейсы'), findsOneWidget);
-    expect(find.text('Смена статуса'), findsOneWidget);
-    expect(find.text('Документы'), findsOneWidget);
+    expect(find.text('Документы и подпись'), findsOneWidget);
+    expect(find.text('Выйти'), findsOneWidget);
+    expect(find.byType(RuLicensePlateBadge), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Документы и подпись'));
+    await tester.tap(find.text('Документы и подпись'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Выпустить ПЭП'), findsOneWidget);
+    expect(find.text('Цифровой ID MAX'), findsOneWidget);
     expect(find.text('ПАСПОРТ'), findsOneWidget);
     expect(find.text('ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ'), findsOneWidget);
     expect(find.text('Повернуть'), findsOneWidget);
@@ -58,7 +60,6 @@ void main() {
     expect(find.text('ООО Перевозчик'), findsOneWidget);
     expect(find.byType(PassportDocumentCard), findsOneWidget);
     expect(find.byType(LicenseDocumentCard), findsOneWidget);
-    expect(find.byType(RuLicensePlateBadge), findsOneWidget);
 
     await tester.ensureVisible(find.text('Повернуть'));
     await tester.pump();
@@ -78,12 +79,16 @@ void main() {
       home: DriverProfileScreen(
         api: MockDriverApi(),
         pep: PepVault(kv: kv),
-        maxDigitalId: MaxDigitalIdService(kv: kv),
+        maxDigitalId: MaxDigitalIdService(),
         push: _push(kv),
       ),
     ));
     await tester.pump();
     await tester.pump();
+
+    await tester.ensureVisible(find.text('Документы и подпись'));
+    await tester.tap(find.text('Документы и подпись'));
+    await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Выпустить ПЭП'));
     await tester.tap(find.text('Выпустить ПЭП'));
@@ -104,7 +109,7 @@ void main() {
       home: DriverProfileScreen(
         api: MockDriverApi(),
         pep: PepVault(kv: kv),
-        maxDigitalId: MaxDigitalIdService(kv: kv),
+        maxDigitalId: MaxDigitalIdService(),
         push: PushRegistration(
           prefsStore: NotificationPrefsStore(kv: kv),
           notifications: notifications,
@@ -117,13 +122,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('Уведомления'), findsOneWidget);
-    expect(find.text('Включить уведомления'), findsOneWidget);
+    expect(find.text('Включить'), findsOneWidget);
     expect(find.text('Новые рейсы'), findsOneWidget);
     expect(find.text('Сроки погрузки и выгрузки'), findsOneWidget);
-    expect(find.text('Проверить'), findsOneWidget);
+    expect(find.text('Проверить уведомление'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Проверить'));
-    await tester.tap(find.text('Проверить'));
+    await tester.ensureVisible(find.text('Проверить уведомление'));
+    await tester.tap(find.text('Проверить уведомление'));
     await tester.pump();
     expect(notifications.testShown, 1);
   });

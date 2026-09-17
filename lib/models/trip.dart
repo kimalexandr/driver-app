@@ -556,6 +556,14 @@ class Trip {
   bool get isCompleted => status == 'delivered';
   bool get needsLocation => status == 'assigned' || status == 'in_transit';
 
+  /// Текст вместо кнопки, когда статус нельзя сменить прямо сейчас.
+  String get nextActionHint {
+    if (isCompleted) return 'Рейс закрыт';
+    if (canStart) return 'Отметьте «В пути», когда выехали';
+    if (canDeliver) return 'Отметьте «Доставлено» после выгрузки';
+    return 'Ждите обновление статуса от диспетчера';
+  }
+
   String get destination {
     if (canStart) {
       return startAddress.isNotEmpty ? startAddress : from;
@@ -1068,6 +1076,8 @@ String formatDistanceKm(num? km) {
   return '${_trimNum(num.parse(km.toStringAsFixed(1)))} км';
 }
 
+enum DeadlineUrgency { ok, soon, late }
+
 class TripDeadline {
   final String kind;
   final DateTime at;
@@ -1080,6 +1090,12 @@ class TripDeadline {
     required this.late,
     required this.delta,
   });
+
+  DeadlineUrgency get urgency {
+    if (late) return DeadlineUrgency.late;
+    if (delta.inMinutes <= 120) return DeadlineUrgency.soon;
+    return DeadlineUrgency.ok;
+  }
 
   String get headline {
     final label = kind == 'unload' ? 'выгрузки' : 'погрузки';

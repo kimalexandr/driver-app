@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -22,9 +25,28 @@ class _VerificationScreenState extends State<VerificationScreen> {
   );
   final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
   bool _loading = false;
+  bool _resending = false;
+  CodeRequest? _challenge;
+  Timer? _resendTimer;
+  int _resendIn = 45;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is CodeRequest) {
+        setState(() => _challenge = args);
+      }
+      _focusNodes.first.requestFocus();
+      _startResendTimer();
+    });
+  }
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (final controller in _controllers) {
       controller.dispose();
     }
@@ -34,9 +56,62 @@ class _VerificationScreenState extends State<VerificationScreen> {
     super.dispose();
   }
 
-  CodeRequest? get _challenge {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    return args is CodeRequest ? args : null;
+  void _startResendTimer([int seconds = 45]) {
+    _resendTimer?.cancel();
+    setState(() => _resendIn = seconds);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendIn <= 1) {
+        timer.cancel();
+        setState(() => _resendIn = 0);
+        return;
+      }
+      setState(() => _resendIn -= 1);
+    });
+  }
+
+  Future<void> _resend() async {
+    final phone = _challenge?.phone;
+    if (phone == null || _resendIn > 0 || _resending) return;
+    setState(() => _resending = true);
+    try {
+      final challenge = await AppScope.of(context).api.requestCode(phone);
+      if (!mounted) return;
+      setState(() => _challenge = challenge);
+      _startResendTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Код отправлен повторно'),
+          backgroundColor: AppColors.navy,
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message), backgroundColor: AppColors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _resending = false);
+    }
+  }
+
+  void _applyDigits(String raw, {int startIndex = 0}) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return;
+    for (var i = 0; i < digits.length && startIndex + i < 4; i++) {
+      _controllers[startIndex + i].text = digits[i];
+    }
+    final filled = _controllers.map((c) => c.text).join();
+    if (filled.length >= 4) {
+      _focusNodes[3].unfocus();
+      _verify();
+      return;
+    }
+    final next = (startIndex + digits.length).clamp(0, 3);
+    _focusNodes[next].requestFocus();
   }
 
   Future<void> _verify() async {
@@ -79,9 +154,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final debugCode = _challenge?.debugCode;
+    final showDebugHints = kDebugMode;
+    final mm = (_resendIn ~/ 60).toString();
+    final ss = (_resendIn % 60).toString().padLeft(2, '0');
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.sand,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: AppColors.navy,
         elevation: 0,
       ),
@@ -100,31 +178,35 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Введите 4-значный код из SMS или служебный код',
-                style: TextStyle(fontSize: 16, color: AppColors.muted),
+              Text(
+                showDebugHints
+                    ? 'Введите 4-значный код из SMS или служебный код'
+                    : 'Введите 4-значный код из SMS',
+                style: const TextStyle(fontSize: 16, color: AppColors.muted),
               ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFE8D2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  debugCode != null &&
-                          debugCode.isNotEmpty &&
-                          debugCode != ServiceLogin.code
-                      ? 'Служебный код: ${ServiceLogin.code}  ·  код сервера: $debugCode'
-                      : 'Служебный код: ${ServiceLogin.code}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.orange,
-                    fontWeight: FontWeight.w700,
+              if (showDebugHints) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8D2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    debugCode != null &&
+                            debugCode.isNotEmpty &&
+                            debugCode != ServiceLogin.code
+                        ? 'Служебный код: ${ServiceLogin.code}  ·  код сервера: $debugCode'
+                        : 'Служебный код: ${ServiceLogin.code}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppColors.orange,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -137,9 +219,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       controller: _controllers[index],
                       focusNode: _focusNodes[index],
                       enabled: !_loading,
+                      autofocus: index == 0,
                       textAlign: TextAlign.center,
                       keyboardType: TextInputType.number,
-                      maxLength: 1,
+                      textInputAction: index == 3
+                          ? TextInputAction.done
+                          : TextInputAction.next,
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
@@ -148,8 +233,16 @@ class _VerificationScreenState extends State<VerificationScreen> {
                         counterText: '',
                         contentPadding: EdgeInsets.symmetric(vertical: 16),
                       ),
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                      ],
                       onChanged: (value) {
+                        if (value.length > 1) {
+                          _controllers[index].text = '';
+                          _applyDigits(value, startIndex: index);
+                          return;
+                        }
                         if (value.isNotEmpty && index < 3) {
                           _focusNodes[index + 1].requestFocus();
                         }
@@ -159,6 +252,17 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       },
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: (_resendIn > 0 || _resending || _loading)
+                    ? null
+                    : _resend,
+                child: Text(
+                  _resendIn > 0
+                      ? 'Отправить снова через $mm:$ss'
+                      : (_resending ? 'Отправка...' : 'Отправить код снова'),
                 ),
               ),
               const Spacer(),

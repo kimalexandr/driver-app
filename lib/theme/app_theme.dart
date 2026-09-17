@@ -10,6 +10,10 @@ class AppColors {
   static const red = Color(0xFFC44536);
   static const muted = Color(0xFF6B7785);
   static const line = Color(0xFFE6DED0);
+
+  static const nightBg = Color(0xFF0E1620);
+  static const nightCard = Color(0xFF1A2430);
+  static const nightLine = Color(0xFF2A3644);
 }
 
 class AppTheme {
@@ -20,14 +24,57 @@ class AppTheme {
       secondary: AppColors.orange,
       surface: AppColors.sand,
       error: AppColors.red,
+      brightness: Brightness.light,
     );
+    return _base(
+      scheme: scheme,
+      scaffold: AppColors.sand,
+      card: AppColors.card,
+      line: AppColors.line,
+      appBarBg: AppColors.navy,
+      appBarFg: Colors.white,
+      inputFill: Colors.white,
+    );
+  }
+
+  static ThemeData dark() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: AppColors.navy,
+      primary: const Color(0xFF7EB6E8),
+      secondary: AppColors.orange,
+      surface: AppColors.nightCard,
+      error: AppColors.red,
+      brightness: Brightness.dark,
+    );
+    return _base(
+      scheme: scheme,
+      scaffold: AppColors.nightBg,
+      card: AppColors.nightCard,
+      line: AppColors.nightLine,
+      appBarBg: AppColors.nightCard,
+      appBarFg: Colors.white,
+      inputFill: AppColors.nightCard,
+    );
+  }
+
+  static ThemeData _base({
+    required ColorScheme scheme,
+    required Color scaffold,
+    required Color card,
+    required Color line,
+    required Color appBarBg,
+    required Color appBarFg,
+    required Color inputFill,
+  }) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: AppColors.sand,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
+      scaffoldBackgroundColor: scaffold,
+      cardColor: card,
+      dividerColor: line,
+      appBarTheme: AppBarTheme(
+        backgroundColor: appBarBg,
+        foregroundColor: appBarFg,
         elevation: 0,
         centerTitle: false,
       ),
@@ -37,15 +84,15 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: inputFill,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.line),
+          borderSide: BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.navy, width: 1.6),
+          borderSide: BorderSide(color: scheme.primary, width: 1.6),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -59,9 +106,9 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.navy,
+          foregroundColor: scheme.primary,
           minimumSize: const Size(double.infinity, 54),
-          side: const BorderSide(color: AppColors.navy),
+          side: BorderSide(color: scheme.primary),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),

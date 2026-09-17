@@ -483,7 +483,9 @@ class _StepTile extends StatelessWidget {
             width: 22,
             child: Column(
               children: [
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
                   width: current ? 16 : 12,
                   height: current ? 16 : 12,
                   margin: EdgeInsets.only(top: current ? 2 : 4),
@@ -491,30 +493,42 @@ class _StepTile extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: done || current ? color : Colors.white,
                     border: Border.all(color: color, width: current ? 4 : 2),
+                    boxShadow: current
+                        ? [
+                            BoxShadow(
+                              color: AppColors.orange.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
                 ),
                 if (!isLast)
                   Expanded(
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 320),
                       width: 2,
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: done ? AppColors.navy.withValues(alpha: 0.22) : AppColors.line,
+                      color: done
+                          ? AppColors.navy.withValues(alpha: 0.22)
+                          : AppColors.line,
                     ),
                   ),
               ],
             ),
           ),
           Expanded(
-            child: current
-                ? Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF6EC),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: _maybeTappable(body),
-                  )
-                : _maybeTappable(body),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              margin: EdgeInsets.only(bottom: current ? 4 : 0),
+              decoration: BoxDecoration(
+                color: current ? const Color(0xFFFFF6EC) : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _maybeTappable(body),
+            ),
           ),
         ],
       ),

@@ -19,6 +19,9 @@ class PushRegistration {
   final SecureKv _kv;
   final String appVersion;
 
+  /// Вызывается при открытии пуша (tap) или cold-start с trip_id.
+  void Function(String tripId)? onOpenTrip;
+
   String? lastStatus;
   String? lastToken;
 
@@ -28,6 +31,7 @@ class PushRegistration {
     RuStorePushGateway? rustore,
     SecureKv? kv,
     this.appVersion = '1.0.3',
+    this.onOpenTrip,
   })  : prefsStore = prefsStore ?? NotificationPrefsStore(),
         notifications = notifications ?? LocalNotifications(),
         rustore = rustore ??
@@ -51,7 +55,6 @@ class PushRegistration {
       await api.updateNotificationPrefs(prefs);
     } on ApiException catch (error) {
       if (error.statusCode == 404 || error.statusCode == 501) return;
-      // локальные prefs уже сохранены
     } catch (_) {}
   }
 
@@ -94,7 +97,19 @@ class PushRegistration {
           body: body ?? '',
         );
       },
+      onOpenMessage: (data) {
+        final tripId = _tripIdFrom(data);
+        if (tripId != null) {
+          onOpenTrip?.call(tripId);
+        }
+      },
     );
+
+    final initial = await rustore.initialMessageData();
+    final initialTripId = _tripIdFrom(initial);
+    if (initialTripId != null) {
+      onOpenTrip?.call(initialTripId);
+    }
 
     final token = await rustore.getToken();
     if (token == null || token.isEmpty) {
@@ -116,6 +131,12 @@ class PushRegistration {
     await _kv.delete('$_tokenKeyPrefix$owner');
     lastToken = null;
     lastStatus = 'Токен снят';
+  }
+
+  String? _tripIdFrom(Map<String, String>? data) {
+    if (data == null) return null;
+    final tripId = (data['trip_id'] ?? data['tripId'] ?? '').trim();
+    return tripId.isEmpty ? null : tripId;
   }
 
   Future<void> _registerToken({

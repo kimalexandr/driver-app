@@ -23,11 +23,26 @@ class NotificationSettingsCard extends StatelessWidget {
     this.onTest,
   });
 
+  String get _statusLine {
+    if (!permissionGranted) {
+      return 'Разрешите уведомления, чтобы получать сообщения о рейсах.';
+    }
+    if (!prefs.enabled) {
+      return 'Уведомления выключены.';
+    }
+    final raw = (statusText ?? '').trim();
+    // Технические строки RuStore водителю не показываем.
+    if (raw.isEmpty ||
+        raw.toLowerCase().contains('rustore') ||
+        raw.toLowerCase().contains('токен')) {
+      return 'Будут приходить выбранные события.';
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     final switchesEnabled = permissionGranted && prefs.enabled && !busy;
-    // Material вместо DecoratedBox: иначе SwitchListTile падает в тестах
-    // (ink splash рисуется на Material выше DecoratedBox с фоном).
     return Material(
       color: AppColors.card,
       shape: RoundedRectangleBorder(
@@ -50,7 +65,7 @@ class NotificationSettingsCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    permissionGranted
+                    permissionGranted && prefs.enabled
                         ? Icons.notifications_active_outlined
                         : Icons.notifications_off_outlined,
                     color: AppColors.navy,
@@ -58,42 +73,16 @@ class NotificationSettingsCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Пуш-уведомления',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        permissionGranted
-                            ? 'Разрешение ОС получено'
-                            : 'Нужно разрешение системы',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    _statusLine,
+                    style: const TextStyle(
+                      color: AppColors.ink,
+                      fontSize: 14,
+                      height: 1.35,
+                    ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              statusText ??
-                  'RuStore Push: токен регистрируется после входа. Настройки также сохраняются на телефоне.',
-              style: const TextStyle(
-                color: AppColors.ink,
-                height: 1.4,
-                fontSize: 14,
-              ),
             ),
             if (!permissionGranted) ...[
               const SizedBox(height: 12),
@@ -105,58 +94,53 @@ class NotificationSettingsCard extends StatelessWidget {
                   label: const Text('Разрешить'),
                 ),
               ),
-            ],
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Включить уведомления'),
-              value: prefs.enabled,
-              onChanged: (!permissionGranted || busy || onChanged == null)
-                  ? null
-                  : (value) => onChanged!(prefs.copyWith(enabled: value)),
-            ),
-            _toggle(
-              title: 'Новые рейсы',
-              subtitle: 'Назначение заявки',
-              value: prefs.newTrips,
-              enabled: switchesEnabled,
-              onChanged: (value) =>
-                  onChanged?.call(prefs.copyWith(newTrips: value)),
-            ),
-            _toggle(
-              title: 'Смена статуса',
-              subtitle: 'Обновления по рейсу',
-              value: prefs.statusChanges,
-              enabled: switchesEnabled,
-              onChanged: (value) =>
-                  onChanged?.call(prefs.copyWith(statusChanges: value)),
-            ),
-            _toggle(
-              title: 'Диспетчер',
-              subtitle: 'Сообщения и важные звонки',
-              value: prefs.dispatcher,
-              enabled: switchesEnabled,
-              onChanged: (value) =>
-                  onChanged?.call(prefs.copyWith(dispatcher: value)),
-            ),
-            _toggle(
-              title: 'Сроки погрузки и выгрузки',
-              subtitle: 'Напоминания о окне времени',
-              value: prefs.deadlines,
-              enabled: switchesEnabled,
-              onChanged: (value) =>
-                  onChanged?.call(prefs.copyWith(deadlines: value)),
-            ),
-            if (permissionGranted) ...[
+            ] else ...[
               const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: (busy || !prefs.enabled) ? null : onTest,
-                  icon: const Icon(Icons.notification_add_outlined, size: 18),
-                  label: const Text('Проверить'),
-                ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Включить'),
+                value: prefs.enabled,
+                onChanged: (busy || onChanged == null)
+                    ? null
+                    : (value) => onChanged!(prefs.copyWith(enabled: value)),
               ),
+              if (prefs.enabled) ...[
+                _toggle(
+                  title: 'Новые рейсы',
+                  value: prefs.newTrips,
+                  enabled: switchesEnabled,
+                  onChanged: (value) =>
+                      onChanged?.call(prefs.copyWith(newTrips: value)),
+                ),
+                _toggle(
+                  title: 'Смена статуса',
+                  value: prefs.statusChanges,
+                  enabled: switchesEnabled,
+                  onChanged: (value) =>
+                      onChanged?.call(prefs.copyWith(statusChanges: value)),
+                ),
+                _toggle(
+                  title: 'Диспетчер',
+                  value: prefs.dispatcher,
+                  enabled: switchesEnabled,
+                  onChanged: (value) =>
+                      onChanged?.call(prefs.copyWith(dispatcher: value)),
+                ),
+                _toggle(
+                  title: 'Сроки погрузки и выгрузки',
+                  value: prefs.deadlines,
+                  enabled: switchesEnabled,
+                  onChanged: (value) =>
+                      onChanged?.call(prefs.copyWith(deadlines: value)),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: busy ? null : onTest,
+                    child: const Text('Проверить уведомление'),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -166,7 +150,6 @@ class NotificationSettingsCard extends StatelessWidget {
 
   Widget _toggle({
     required String title,
-    required String subtitle,
     required bool value,
     required bool enabled,
     required ValueChanged<bool> onChanged,
@@ -174,7 +157,6 @@ class NotificationSettingsCard extends StatelessWidget {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(title),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       value: value,
       onChanged: enabled ? onChanged : null,
     );

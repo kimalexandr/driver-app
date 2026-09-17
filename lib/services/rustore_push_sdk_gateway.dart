@@ -32,10 +32,23 @@ class SdkRuStorePushGateway implements RuStorePushGateway {
   }
 
   @override
+  Future<Map<String, String>?> initialMessageData() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
+    }
+    try {
+      return await RuStorePushSdkBridge.initialMessageData();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Future<void> listen({
     required void Function(String token) onNewToken,
     void Function(String? title, String? body, Map<String, String>? data)?
         onMessage,
+    void Function(Map<String, String>? data)? onOpenMessage,
   }) async {
     if (_listening) return;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
@@ -44,6 +57,7 @@ class SdkRuStorePushGateway implements RuStorePushGateway {
       await RuStorePushSdkBridge.attach(
         onNewToken: onNewToken,
         onMessage: onMessage,
+        onOpenMessage: onOpenMessage,
       );
     } catch (_) {
       _listening = false;

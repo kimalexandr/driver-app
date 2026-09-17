@@ -15,7 +15,7 @@ import 'package:phone_auth_app/state/app_scope.dart';
 import 'package:phone_auth_app/state/auth_controller.dart';
 
 void main() {
-  testWidgets('на входе есть Госуслуги и Госключ, mock пускает сразу', (tester) async {
+  testWidgets('на входе только телефон, без Госуслуг', (tester) async {
     final api = MockDriverApi();
     final store = MemoryTokenStore();
     final auth = AuthController(api: api, tokenStore: store);
@@ -40,28 +40,23 @@ void main() {
         child: MaterialApp(
           home: const PhoneInputScreen(),
           routes: {
-            '/trips': (_) => const Scaffold(body: Text('Рейсы')),
+            '/verify': (_) => const Scaffold(body: Text('Код')),
           },
         ),
       ),
     );
 
-    expect(find.text('Госуслуги'), findsOneWidget);
-    expect(find.text('Госключ'), findsOneWidget);
+    expect(find.text('Госуслуги'), findsNothing);
+    expect(find.text('Госключ'), findsNothing);
+    expect(find.text('Получить код'), findsOneWidget);
     expect(find.text('+7'), findsOneWidget);
-    expect(find.text('(999) 123-45-67'), findsOneWidget);
-    expect(find.text('+7 (___) ___-__-__'), findsNothing);
 
     await tester.enterText(find.byType(TextFormField), '9991234567');
     await tester.pump();
-
     expect(find.text('(999) 123-45-67'), findsWidgets);
-    expect(find.textContaining('Код придёт на'), findsNothing);
 
-    await tester.tap(find.text('Госуслуги'));
+    await tester.tap(find.text('Получить код'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Рейсы'), findsOneWidget);
-    expect(auth.isLoggedIn, isTrue);
+    expect(find.text('Код'), findsOneWidget);
   });
 }

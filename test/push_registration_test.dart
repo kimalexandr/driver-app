@@ -40,4 +40,21 @@ void main() {
     await push.savePrefs('d1', prefs, api: MockDriverApi());
     expect(await store.read('d1'), prefs);
   });
+
+  test('PushRegistration открывает рейс по trip_id из пуша', () async {
+    final kv = MemorySecureKv();
+    String? opened;
+    final push = PushRegistration(
+      prefsStore: NotificationPrefsStore(kv: kv),
+      notifications: FakeLocalNotifications(permissionGranted: true),
+      rustore: FakeRuStorePushGateway(
+        initialData: {'trip_id': 'trip-42'},
+      ),
+      kv: kv,
+      onOpenTrip: (id) => opened = id,
+    );
+
+    await push.sync(api: MockDriverApi(), owner: 'd1');
+    expect(opened, 'trip-42');
+  });
 }

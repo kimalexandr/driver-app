@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_exception.dart';
-import '../models/external_auth.dart';
-import '../services/external_auth.dart';
 import '../services/phone.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
@@ -34,32 +32,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
       final challenge = await AppScope.of(context).api.requestCode(phone);
       if (!mounted) return;
       Navigator.pushNamed(context, '/verify', arguments: challenge);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message), backgroundColor: AppColors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _external(AuthProviderKind provider) async {
-    setState(() => _loading = true);
-    try {
-      final scope = AppScope.of(context);
-      final outcome = await ExternalAuthService(scope.api).authenticate(provider);
-      if (outcome.session != null) {
-        await scope.pep.linkProvider(provider);
-        await scope.auth.applySession(outcome.session!);
-        if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/trips', (route) => false);
-        return;
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(outcome.message ?? 'Откройте ${provider.title}')),
-      );
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,36 +105,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 ElevatedButton(
                   onPressed: _loading ? null : _submit,
                   child: Text(_loading ? 'Отправка...' : 'Получить код'),
-                ),
-                const SizedBox(height: 18),
-                const Row(
-                  children: [
-                    Expanded(child: Divider(color: AppColors.line)),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'или войти через',
-                        style: TextStyle(color: AppColors.muted),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: AppColors.line)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: _loading
-                      ? null
-                      : () => _external(AuthProviderKind.gosuslugi),
-                  icon: const Icon(Icons.account_balance_outlined),
-                  label: const Text('Госуслуги'),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: _loading
-                      ? null
-                      : () => _external(AuthProviderKind.goskey),
-                  icon: const Icon(Icons.key_outlined),
-                  label: const Text('Госключ'),
                 ),
               ],
             ),

@@ -84,7 +84,15 @@ jobs:
           fi
 
       - name: Build APK
-        run: flutter build apk --release
+        env:
+          RUSTORE_PUSH_PROJECT_ID: ${{ secrets.RUSTORE_PUSH_PROJECT_ID }}
+        run: |
+          if [ -n "${RUSTORE_PUSH_PROJECT_ID:-}" ]; then
+            flutter build apk --release -PRUSTORE_PUSH_PROJECT_ID="$RUSTORE_PUSH_PROJECT_ID"
+          else
+            echo "::warning::Секрет RUSTORE_PUSH_PROJECT_ID не задан — в APK попадёт placeholder Project ID."
+            flutter build apk --release
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

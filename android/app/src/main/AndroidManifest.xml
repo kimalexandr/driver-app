@@ -34,22 +34,13 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="7rights-driver" android:host="invite"/>
+                <data android:scheme="7rights-driver" android:host="auth"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="7rights-driver" android:host="auth"/>
-            </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data
-                    android:scheme="https"
-                    android:host="lk.7rights.ru"
-                    android:pathPrefix="/driver/invite"/>
+                <data android:scheme="7rights-driver" android:host="trip"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

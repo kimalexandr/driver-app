@@ -40,8 +40,16 @@ class _TripDeadlineBannerState extends State<TripDeadlineBanner> {
   Widget build(BuildContext context) {
     final deadline = tripDeadline(widget.trip);
     if (deadline == null) return const SizedBox.shrink();
-    final color = deadline.late ? AppColors.red : AppColors.orange;
-    final bg = deadline.late ? const Color(0xFFF8D9D5) : const Color(0xFFFFE8D2);
+    final color = switch (deadline.urgency) {
+      DeadlineUrgency.late => AppColors.red,
+      DeadlineUrgency.soon => AppColors.orange,
+      DeadlineUrgency.ok => AppColors.green,
+    };
+    final bg = switch (deadline.urgency) {
+      DeadlineUrgency.late => const Color(0xFFF8D9D5),
+      DeadlineUrgency.soon => const Color(0xFFFFE8D2),
+      DeadlineUrgency.ok => const Color(0xFFDCEFE3),
+    };
     if (widget.compact) {
       return Text(
         deadline.headline,
@@ -59,7 +67,9 @@ class _TripDeadlineBannerState extends State<TripDeadlineBanner> {
       child: Row(
         children: [
           Icon(
-            deadline.late ? Icons.warning_amber_rounded : Icons.timer_outlined,
+            deadline.late
+                ? Icons.warning_amber_rounded
+                : Icons.timer_outlined,
             color: color,
           ),
           const SizedBox(width: 10),

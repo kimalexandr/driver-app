@@ -21,8 +21,10 @@ void main() {
     expect(normalizePhone('9991234567'), '79991234567');
   });
 
-  test('служебный код 1111 подменяет debug_code', () {
+  test('служебный код 1111 работает только в debug', () {
     expect(ServiceLogin.code, '1111');
+    // В тестах kDebugMode=true, поэтому resolve активен.
+    expect(ServiceLogin.enabled, isTrue);
     expect(ServiceLogin.resolve(entered: '1111', debugCode: '5821'), '5821');
     expect(ServiceLogin.resolve(entered: '1111', debugCode: null), '1111');
     expect(ServiceLogin.resolve(entered: '5821', debugCode: '5821'), '5821');

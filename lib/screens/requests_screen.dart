@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_exception.dart';
@@ -7,9 +8,9 @@ import '../models/trip.dart';
 import '../services/yandex_maps.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ru_license_plate.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/trip_deadline_banner.dart';
+import '../widgets/trip_list_skeleton.dart';
 import 'driver_profile_screen.dart';
 import 'request_details_screen.dart';
 
@@ -32,6 +33,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   bool _loading = true;
   String? _error;
   String _completedQuery = '';
+  DateTime? _lastUpdated;
   final TextEditingController _completedSearch = TextEditingController();
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
@@ -86,6 +88,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
       setState(() {
         _trips = trips;
         _loading = false;
+        _lastUpdated = DateTime.now();
       });
     } catch (error) {
       if (!mounted) return;
@@ -110,6 +113,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   }
 
   Future<void> _openRoute(Trip trip) async {
+    HapticFeedback.lightImpact();
     final opened = await openYandexNavigateTo(
       address: trip.destination,
       lat: trip.destinationLat,
@@ -126,6 +130,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   }
 
   Future<void> _callDispatcher(Trip trip) async {
+    HapticFeedback.lightImpact();
     final phone = trip.dispatcherPhone.replaceAll(RegExp(r'[^\d+]'), '');
     if (phone.isEmpty) return;
     final uri = Uri.parse('tel:$phone');
@@ -134,16 +139,37 @@ class _RequestsScreenState extends State<RequestsScreen> {
     }
   }
 
+  String _formatUpdated(DateTime at) {
+    final hh = at.hour.toString().padLeft(2, '0');
+    final mm = at.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.companyName ?? 'Рейсы'),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.companyName ?? 'Рейсы'),
+              if (_lastUpdated != null && !_loading)
+                Text(
+                  'Обновлено ${_formatUpdated(_lastUpdated!)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
+            ],
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.person_outline),
+              tooltip: 'Профиль',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -164,9 +190,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ],
           ),
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
+        body: _loading && _trips.isEmpty
+            ? const TripListSkeleton()
+            : _error != null && _trips.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -187,7 +213,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   )
                 : TabBarView(
                     children: [
-                      _list(_active, 'Нет назначенных рейсов'),
+                      _list(
+                        _active,
+                        'Пока нет рейсов',
+                      ),
                       Column(
                         children: [
                           Padding(
@@ -246,10 +275,54 @@ class _RequestsScreenState extends State<RequestsScreen> {
       child: trips.isEmpty
           ? ListView(
               children: [
-                const SizedBox(height: 140),
-                const Icon(Icons.route_outlined, size: 48, color: AppColors.muted),
+                const SizedBox(height: 120),
+                Icon(
+                  emptyText == 'Пока нет рейсов'
+                      ? Icons.notifications_active_outlined
+                      : Icons.route_outlined,
+                  size: 48,
+                  color: AppColors.muted,
+                ),
                 const SizedBox(height: 16),
-                Center(child: Text(emptyText)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    emptyText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+                if (emptyText == 'Пока нет рейсов') ...[
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 36),
+                    child: Text(
+                      'Когда диспетчер назначит рейс — придёт уведомление.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.muted, height: 1.35),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 48),
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DriverProfileScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.notifications_outlined),
+                      label: const Text('Проверить уведомления'),
+                    ),
+                  ),
+                ],
               ],
             )
           : ListView.builder(
@@ -289,16 +362,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            GestureDetector(
-                              onTap: () => _openRoute(trip),
-                              child: Text(
-                                '${trip.from.isNotEmpty ? trip.from : trip.startAddress} → ${trip.to.isNotEmpty ? trip.to : trip.finishAddress}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.ink,
-                                  decoration: TextDecoration.underline,
-                                ),
+                            Text(
+                              '${trip.from.isNotEmpty ? trip.from : trip.startAddress} → ${trip.to.isNotEmpty ? trip.to : trip.finishAddress}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
                               ),
                             ),
                             const SizedBox(height: 10),
@@ -326,44 +395,23 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   IconButton(
                                     tooltip: 'Позвонить диспетчеру',
                                     onPressed: () => _callDispatcher(trip),
-                                    icon: const Icon(Icons.phone_outlined, size: 20),
+                                    icon: const Icon(Icons.phone_outlined, size: 24),
                                     color: AppColors.navy,
-                                    visualDensity: VisualDensity.compact,
+                                    style: IconButton.styleFrom(
+                                      minimumSize: const Size(48, 48),
+                                    ),
                                   ),
-                                TextButton.icon(
+                                IconButton(
+                                  tooltip: trip.navigationLabel,
                                   onPressed: () => _openRoute(trip),
-                                  icon: const Icon(Icons.navigation_outlined, size: 18),
-                                  label: Text(trip.navigationLabel),
+                                  icon: const Icon(Icons.navigation_outlined, size: 24),
+                                  color: AppColors.navy,
+                                  style: IconButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                  ),
                                 ),
                               ],
                             ),
-                            if (trip.vehicle.isNotEmpty) ...[
-                              const SizedBox(height: 10),
-                              RuLicensePlateBadge(
-                                number: trip.vehicle,
-                                size: RuLicensePlateSize.compact,
-                              ),
-                            ],
-                            if (trip.cargoLabel.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                trip.cargoLabel,
-                                style: const TextStyle(color: AppColors.ink),
-                              ),
-                            ],
-                            if (trip.totalWeightKg != null ||
-                                trip.totalVolumeM3 != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                [
-                                  if (trip.totalWeightKg != null)
-                                    formatKg(trip.totalWeightKg),
-                                  if (trip.totalVolumeM3 != null)
-                                    formatM3(trip.totalVolumeM3),
-                                ].join(' · '),
-                                style: const TextStyle(color: AppColors.muted),
-                              ),
-                            ],
                           ],
                         ),
                       ),

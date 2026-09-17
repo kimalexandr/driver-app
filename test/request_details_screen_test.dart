@@ -99,6 +99,7 @@ void main() {
     expect(find.text('Машина'), findsOneWidget);
     expect(find.text('Доверенность на водителя'), findsOneWidget);
     expect(find.textContaining('№ Д-17'), findsOneWidget);
+    expect(find.text('Показать сводку'), findsOneWidget);
     expect(find.textContaining('окно 09:00–12:00'), findsOneWidget);
     expect(find.text('Отправитель'), findsOneWidget);
     expect(find.text('Получатель'), findsOneWidget);

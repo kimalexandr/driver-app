@@ -13,10 +13,16 @@ class RuStorePushSdkBridge {
     return token;
   }
 
+  static Future<Map<String, String>?> initialMessageData() async {
+    final message = await RustorePushClient.getInitialMessage();
+    return _messageData(message);
+  }
+
   static Future<void> attach({
     required void Function(String token) onNewToken,
     void Function(String? title, String? body, Map<String, String>? data)?
         onMessage,
+    void Function(Map<String, String>? data)? onOpenMessage,
   }) {
     return RustorePushClient.attachCallbacks(
       onNewToken: (token) {
@@ -28,23 +34,27 @@ class RuStorePushSdkBridge {
       onMessageReceived: (message) {
         if (onMessage == null) return;
         final notification = message.notification;
-        final rawData = message.data;
-        Map<String, String>? data;
-        if (rawData is Map) {
-          data = {
-            for (final entry in rawData.entries)
-              if (entry.key != null) '${entry.key}': '${entry.value ?? ''}',
-          };
-        }
         onMessage(
           notification?.title?.toString(),
           notification?.body?.toString(),
-          data,
+          _messageData(message),
         );
       },
       onDeletedMessages: () {},
       onError: (_) {},
-      onMessageOpenedApp: (_) {},
+      onMessageOpenedApp: (message) {
+        onOpenMessage?.call(_messageData(message));
+      },
     );
+  }
+
+  static Map<String, String>? _messageData(dynamic message) {
+    if (message == null) return null;
+    final rawData = message.data;
+    if (rawData is! Map) return null;
+    return {
+      for (final entry in rawData.entries)
+        if (entry.key != null) '${entry.key}': '${entry.value ?? ''}',
+    };
   }
 }

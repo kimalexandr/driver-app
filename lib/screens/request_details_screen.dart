@@ -8,6 +8,7 @@ import '../api/driver_api.dart';
 import '../models/driver_profile.dart';
 import '../models/trip.dart';
 import '../services/location_service.dart';
+import '../services/pending_actions.dart';
 import '../services/yandex_maps.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
@@ -20,11 +21,13 @@ import '../widgets/trip_status_thread.dart';
 class RequestDetailsScreen extends StatefulWidget {
   final Trip trip;
   final DriverApi? api;
+  final PendingActionsQueue? pending;
 
   const RequestDetailsScreen({
     super.key,
     required this.trip,
     this.api,
+    this.pending,
   });
 
   @override
@@ -34,6 +37,8 @@ class RequestDetailsScreen extends StatefulWidget {
 class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   late Trip _trip;
   bool _busy = false;
+  List<PendingAction> _pending = const [];
+  late final PendingActionsQueue _queue;
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
@@ -44,7 +49,18 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   void initState() {
     super.initState();
     _trip = widget.trip;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+    _queue = widget.pending ?? PendingActionsQueue();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _reload();
+      await _loadPending();
+      await _flushPending();
+    });
+  }
+
+  Future<void> _loadPending() async {
+    final items = await _queue.forTrip(_trip.id);
+    if (!mounted) return;
+    setState(() => _pending = items);
   }
 
   Future<void> _reload() async {
@@ -60,9 +76,19 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     }
   }
 
-  void _showError(String message) {
+  void _showError(String message, {VoidCallback? onRetry}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.red,
+        action: onRetry == null
+            ? null
+            : SnackBarAction(
+                label: 'Повторить',
+                textColor: Colors.white,
+                onPressed: onRetry,
+              ),
+      ),
     );
   }
 
@@ -72,18 +98,63 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
-  Future<void> _setStatus(String status) async {
+  Future<bool> _confirmStatus(String status) async {
+    final isStart = status == 'in_transit';
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isStart ? 'Отметить «В пути»?' : 'Отметить «Доставлено»?'),
+        content: Text(
+          isStart
+              ? 'Подтвердите, что вы выехали или уже на погрузке.'
+              : 'Подтвердите, что груз сдан и рейс можно закрыть.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 44)),
+            child: const Text('Подтвердить'),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _setStatus(String status, {bool confirm = true}) async {
     if (_busy) return;
+    if (confirm && !await _confirmStatus(status)) return;
     final api = _api;
     if (api == null) return;
     setState(() => _busy = true);
     try {
       final trip = await api.updateTripStatus(tripId: _trip.id, status: status);
+      final pendingId = 'status:${_trip.id}:$status';
+      await _queue.remove(pendingId);
       if (!mounted) return;
       setState(() => _trip = trip.orFallback(_trip));
-    } on ApiException catch (error) {
+      await _loadPending();
+      HapticFeedback.mediumImpact();
+    } catch (error) {
       if (!mounted) return;
-      _showError(error.message);
+      final action = PendingAction(
+        id: 'status:${_trip.id}:$status',
+        type: PendingActionType.status,
+        tripId: _trip.id,
+        status: status,
+      );
+      await _queue.enqueue(action);
+      await _loadPending();
+      _showError(
+        error is ApiException
+            ? '${error.message}. Сохранено для отправки.'
+            : 'Не отправилось — повторить',
+        onRetry: () => _setStatus(status, confirm: false),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -94,6 +165,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     double? lat,
     double? lng,
   }) async {
+    HapticFeedback.lightImpact();
     final opened = await openYandexPlace(
       address: address,
       lat: lat,
@@ -105,6 +177,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Future<void> _openTripRoute() async {
+    HapticFeedback.lightImpact();
     final opened = await openYandexNavigateTo(
       address: _trip.destination,
       lat: _trip.destinationLat,
@@ -123,24 +196,51 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     _showOk(okMessage);
   }
 
-  Future<void> _sendLocation() async {
+  Future<void> _sendLocation({PendingAction? queued}) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      final point = await _location.current();
-      if (point == null) {
-        if (!mounted) return;
-        _showError('Не удалось получить геолокацию. Проверьте разрешение.');
-        return;
+      late final double lat;
+      late final double lng;
+      if (queued?.lat != null && queued?.lng != null) {
+        lat = queued!.lat!;
+        lng = queued.lng!;
+      } else {
+        final point = await _location.current();
+        if (point == null) {
+          if (!mounted) return;
+          _showError('Не удалось получить геолокацию. Проверьте разрешение.');
+          return;
+        }
+        lat = point.lat;
+        lng = point.lng;
       }
       final api = _api;
       if (api == null) return;
-      await api.sendLocation(tripId: _trip.id, lat: point.lat, lng: point.lng);
+      await api.sendLocation(tripId: _trip.id, lat: lat, lng: lng);
+      if (queued != null) await _queue.remove(queued.id);
       if (!mounted) return;
+      await _loadPending();
       _showOk('Местоположение отправлено');
-    } on ApiException catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      _showError(error.message);
+      final point = await _location.current();
+      final action = PendingAction(
+        id: queued?.id ??
+            'location:${_trip.id}:${DateTime.now().millisecondsSinceEpoch}',
+        type: PendingActionType.location,
+        tripId: _trip.id,
+        lat: point?.lat ?? queued?.lat,
+        lng: point?.lng ?? queued?.lng,
+      );
+      if (action.lat != null && action.lng != null) {
+        await _queue.enqueue(action);
+        await _loadPending();
+      }
+      _showError(
+        'Не отправилось — повторить',
+        onRetry: () => _sendLocation(queued: action.lat != null ? action : null),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -149,19 +249,57 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   Future<void> _attachPhoto() async {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (file == null) return;
+    await _uploadPhoto(file.path);
+  }
+
+  Future<void> _uploadPhoto(String path, {PendingAction? queued}) async {
+    if (_busy) return;
     setState(() => _busy = true);
     try {
       final api = _api;
       if (api == null) return;
-      await api.uploadFile(tripId: _trip.id, filePath: file.path);
+      await api.uploadFile(tripId: _trip.id, filePath: path);
+      if (queued != null) await _queue.remove(queued.id);
       if (!mounted) return;
+      await _loadPending();
       _showOk('Фото прикреплено');
-    } on ApiException catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      _showError(error.message);
+      final action = queued ??
+          PendingAction(
+            id: 'photo:${_trip.id}:${path.hashCode}',
+            type: PendingActionType.photo,
+            tripId: _trip.id,
+            filePath: path,
+          );
+      await _queue.enqueue(action);
+      await _loadPending();
+      _showError(
+        'Не отправилось — повторить',
+        onRetry: () => _uploadPhoto(path, queued: action),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _flushPending() async {
+    final items = await _queue.forTrip(_trip.id);
+    for (final action in items) {
+      switch (action.type) {
+        case PendingActionType.status:
+          if (action.status != null) {
+            await _setStatus(action.status!, confirm: false);
+          }
+        case PendingActionType.photo:
+          if (action.filePath != null) {
+            await _uploadPhoto(action.filePath!, queued: action);
+          }
+        case PendingActionType.location:
+          await _sendLocation(queued: action);
+      }
+    }
+    await _loadPending();
   }
 
   @override
@@ -172,66 +310,102 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           onLongPress: () => _copyText(_trip.number, 'Номер рейса скопирован'),
           child: Text('Рейс №${_trip.number}'),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить',
+            icon: const Icon(Icons.refresh),
+            onPressed: _busy ? null : _reload,
+          ),
+        ],
       ),
       body: Column(
         children: [
           _pinnedBar(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TripDeadlineBanner(trip: _trip),
-                  TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
-                  const SizedBox(height: 16),
-                  _card(
-                    title: 'Документы ЭТрН',
-                    child: _trip.allEtrnTitles.isEmpty
-                        ? const Text(
-                            'Титулы пока не пришли из TMS. Когда ЭТрН появится в рейсе, здесь будут T1–T4 и статус подписи.',
-                            style: TextStyle(color: AppColors.muted, height: 1.35),
-                          )
-                        : EtrnTitlesBlock(titles: _trip.allEtrnTitles),
-                  ),
-                  if (_showAutoCard) ...[
-                    const SizedBox(height: 16),
-                    _autoCard(),
-                  ],
-                  if (_trip.hasAnyAttorney) ...[
-                    const SizedBox(height: 16),
-                    _attorneyCard(),
-                  ],
-                  if (_showTripComment) ...[
+            child: RefreshIndicator(
+              color: AppColors.navy,
+              onRefresh: _reload,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_pending.isNotEmpty) ...[
+                      Material(
+                        color: const Color(0xFFF8D9D5),
+                        borderRadius: BorderRadius.circular(14),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4,
+                          ),
+                          leading: const Icon(Icons.cloud_off, color: AppColors.red),
+                          title: Text(
+                            'Не отправлено: ${_pending.length}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.red,
+                            ),
+                          ),
+                          subtitle: const Text('Нажмите, чтобы повторить'),
+                          trailing: const Icon(Icons.refresh, color: AppColors.red),
+                          onTap: _busy ? null : _flushPending,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    TripDeadlineBanner(trip: _trip),
+                    TripStatusThread(trip: _trip, onOpenPlace: _openPlace),
                     const SizedBox(height: 16),
                     _card(
-                      title: 'Комментарий рейса',
-                      child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
+                      title: 'Документы ЭТрН',
+                      child: _trip.allEtrnTitles.isEmpty
+                          ? const Text(
+                              'Документы ЭТрН появятся здесь, когда их пришлют.',
+                              style: TextStyle(color: AppColors.muted, height: 1.35),
+                            )
+                          : EtrnTitlesBlock(titles: _trip.allEtrnTitles),
                     ),
+                    if (_showAutoCard) ...[
+                      const SizedBox(height: 16),
+                      _autoCard(),
+                    ],
+                    if (_trip.hasAnyAttorney) ...[
+                      const SizedBox(height: 16),
+                      _attorneyCard(),
+                    ],
+                    if (_showTripComment) ...[
+                      const SizedBox(height: 16),
+                      _card(
+                        title: 'Комментарий рейса',
+                        child: Text(_trip.comment, style: const TextStyle(fontSize: 16)),
+                      ),
+                    ],
+                    if (_hasCargoBlock) ...[
+                      const SizedBox(height: 16),
+                      _cargoCard(),
+                    ],
+                    if (_showSender) ...[
+                      const SizedBox(height: 16),
+                      _partyCard(
+                        'Отправитель',
+                        _trip.sender,
+                        hideCompany: _trip.startCompany,
+                        hideAddress: _trip.startAddress,
+                      ),
+                    ],
+                    if (_showRecipient) ...[
+                      const SizedBox(height: 16),
+                      _partyCard(
+                        'Получатель',
+                        _trip.recipient,
+                        hideCompany: _trip.finishCompany,
+                        hideAddress: _trip.finishAddress,
+                      ),
+                    ],
                   ],
-                  if (_hasCargoBlock) ...[
-                    const SizedBox(height: 16),
-                    _cargoCard(),
-                  ],
-                  if (_showSender) ...[
-                    const SizedBox(height: 16),
-                    _partyCard(
-                      'Отправитель',
-                      _trip.sender,
-                      hideCompany: _trip.startCompany,
-                      hideAddress: _trip.startAddress,
-                    ),
-                  ],
-                  if (_showRecipient) ...[
-                    const SizedBox(height: 16),
-                    _partyCard(
-                      'Получатель',
-                      _trip.recipient,
-                      hideCompany: _trip.finishCompany,
-                      hideAddress: _trip.finishAddress,
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
@@ -318,6 +492,15 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   Widget _pinnedBar() {
     final hasDispatcher =
         _trip.dispatcherName.isNotEmpty || _trip.dispatcherPhone.isNotEmpty;
+    final title = hasDispatcher && _trip.dispatcherName.isNotEmpty
+        ? _trip.dispatcherName
+        : (_trip.dateRange.isNotEmpty ? _trip.dateRange : 'Рейс');
+    final subtitle = hasDispatcher
+        ? 'Диспетчер'
+        : (_trip.from.isNotEmpty || _trip.to.isNotEmpty
+            ? '${_trip.from} → ${_trip.to}'
+            : null);
+
     return Material(
       color: Colors.white,
       child: Container(
@@ -338,9 +521,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    hasDispatcher && _trip.dispatcherName.isNotEmpty
-                        ? _trip.dispatcherName
-                        : (_trip.dateRange.isNotEmpty ? _trip.dateRange : 'Рейс'),
+                    title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -348,27 +529,29 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       color: AppColors.navy,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hasDispatcher ? 'Диспетчер' : ' ',
-                    maxLines: 1,
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: _trip.dispatcherPhone.isNotEmpty
-                  ? IconButton(
-                      tooltip: 'Позвонить диспетчеру',
-                      onPressed: () => _call(_trip.dispatcherPhone),
-                      icon: const Icon(Icons.phone_outlined),
-                      color: AppColors.navy,
-                    )
-                  : null,
-            ),
+            if (_trip.dispatcherPhone.isNotEmpty)
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: IconButton(
+                  tooltip: 'Позвонить диспетчеру',
+                  onPressed: () => _call(_trip.dispatcherPhone),
+                  icon: const Icon(Icons.phone_outlined),
+                  color: AppColors.navy,
+                ),
+              ),
           ],
         ),
       ),
@@ -408,13 +591,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               style: const TextStyle(color: AppColors.muted),
             ),
           ],
-          if (plate.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            const Text(
-              'Нажмите на номер, чтобы скопировать',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-          ],
         ],
       ),
     );
@@ -439,23 +615,22 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             Text('до $date', style: const TextStyle(color: AppColors.muted)),
           ],
           const SizedBox(height: 8),
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: _showAttorney,
-                icon: const Icon(Icons.description_outlined, size: 18),
-                label: const Text('Показать'),
-              ),
-              if (url.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () => launchUrl(
-                    Uri.parse(url),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  icon: const Icon(Icons.download_outlined, size: 18),
-                  label: const Text('Скачать'),
+          if (url.isNotEmpty)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => launchUrl(
+                  Uri.parse(url),
+                  mode: LaunchMode.externalApplication,
                 ),
-            ],
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: const Text('Открыть файл'),
+              ),
+            ),
+          TextButton.icon(
+            onPressed: _showAttorney,
+            icon: const Icon(Icons.notes_outlined, size: 18),
+            label: Text(url.isNotEmpty ? 'Сводка' : 'Показать сводку'),
           ),
         ],
       ),
@@ -804,6 +979,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Future<void> _call(String phone) async {
+    HapticFeedback.lightImpact();
     final digits = phone.replaceAll(RegExp(r'[^\d+]'), '');
     final uri = Uri.parse('tel:$digits');
     if (await canLaunchUrl(uri)) {
@@ -812,41 +988,48 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Widget _actions() {
+    final canAct = _trip.canStart || _trip.canDeliver;
     final primaryLabel = _trip.canStart
         ? 'В пути'
         : (_trip.canDeliver ? 'Доставлено' : '');
+    final hint = _trip.nextActionHint;
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       elevation: 8,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
           child: Row(
             children: [
-              if (primaryLabel.isNotEmpty)
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _setStatus(_trip.canStart ? 'in_transit' : 'delivered'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 44),
-                    ),
-                    child: Text(primaryLabel),
-                  ),
-                )
-              else
-                const Expanded(
-                  child: Text(
-                    'Рейс завершён',
-                    style: TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 6),
+              Expanded(
+                flex: 3,
+                child: canAct
+                    ? ElevatedButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _setStatus(
+                                  _trip.canStart ? 'in_transit' : 'delivered',
+                                ),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 56),
+                          textStyle: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        child: Text(primaryLabel),
+                      )
+                    : Text(
+                        hint,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 8),
               _iconAction(
                 icon: Icons.navigation_outlined,
                 tooltip: _trip.navigationLabel,
@@ -856,10 +1039,10 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 _iconAction(
                   icon: Icons.my_location,
                   tooltip: 'Отправить местоположение',
-                  onPressed: _busy ? null : _sendLocation,
+                  onPressed: _busy ? null : () => _sendLocation(),
                 ),
               _iconAction(
-                icon: Icons.photo_outlined,
+                icon: Icons.photo_camera_outlined,
                 tooltip: 'Прикрепить фото',
                 onPressed: _busy ? null : _attachPhoto,
               ),
@@ -878,11 +1061,11 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: Icon(icon, size: 22),
+      icon: Icon(icon, size: 28),
       color: AppColors.navy,
       style: IconButton.styleFrom(
-        minimumSize: const Size(44, 44),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(56, 56),
+        tapTargetSize: MaterialTapTargetSize.padded,
       ),
     );
   }

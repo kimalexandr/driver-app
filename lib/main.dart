@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'api/api_exception.dart';
+import 'models/trip.dart';
 import 'screens/phone_input_screen.dart';
+import 'screens/request_details_screen.dart';
 import 'screens/requests_screen.dart';
 import 'screens/verification_screen.dart';
 import 'state/app_scope.dart';
@@ -27,12 +30,14 @@ class _DriverAppState extends State<DriverApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   bool _ready = false;
   bool _wasLoggedIn = false;
+  String? _pendingTripId;
 
   AuthController get _auth => widget.dependencies.auth;
 
   @override
   void initState() {
     super.initState();
+    widget.dependencies.push.onOpenTrip = _onOpenTripFromPush;
     _auth.addListener(_onAuth);
     _boot();
   }
@@ -43,6 +48,50 @@ class _DriverAppState extends State<DriverApp> {
     _wasLoggedIn = _auth.isLoggedIn;
     setState(() => _ready = true);
     _syncTracker();
+    _flushPendingTrip();
+  }
+
+  void _onOpenTripFromPush(String tripId) {
+    _pendingTripId = tripId;
+    _flushPendingTrip();
+  }
+
+  void _flushPendingTrip() {
+    if (!_ready || !_auth.isLoggedIn) return;
+    final tripId = _pendingTripId;
+    if (tripId == null || tripId.isEmpty) return;
+    _pendingTripId = null;
+    // ignore: discarded_futures
+    _openTripById(tripId);
+  }
+
+  Future<void> _openTripById(String tripId) async {
+    final nav = _navigatorKey.currentState;
+    if (nav == null) return;
+    try {
+      final trip = await widget.dependencies.api.getTrip(tripId);
+      nav.push(
+        MaterialPageRoute(
+          builder: (context) => RequestDetailsScreen(trip: trip),
+        ),
+      );
+    } on ApiException {
+      nav.push(
+        MaterialPageRoute(
+          builder: (context) => RequestDetailsScreen(
+            trip: Trip(
+              id: tripId,
+              number: tripId,
+              status: 'assigned',
+              statusLabel: 'Рейс',
+              from: '',
+              to: '',
+              dateStart: '',
+            ),
+          ),
+        ),
+      );
+    } catch (_) {}
   }
 
   void _onAuth() {
@@ -56,6 +105,9 @@ class _DriverAppState extends State<DriverApp> {
     }
     _wasLoggedIn = _auth.isLoggedIn;
     _syncTracker();
+    if (_auth.isLoggedIn) {
+      _flushPendingTrip();
+    }
   }
 
   void _syncTracker() {
@@ -95,6 +147,8 @@ class _DriverAppState extends State<DriverApp> {
         navigatorKey: _navigatorKey,
         title: '7Rights Driver',
         theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.system,
         home: !_ready
             ? const Scaffold(
                 backgroundColor: AppColors.sand,
