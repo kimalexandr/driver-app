@@ -73,14 +73,14 @@ class PendingActionsQueue {
   }
 
   Future<void> enqueue(PendingAction action) async {
-    final items = await list();
+    final items = List<PendingAction>.from(await list());
     items.removeWhere((item) => item.id == action.id);
     items.add(action);
     await _save(items);
   }
 
   Future<void> remove(String id) async {
-    final items = await list();
+    final items = List<PendingAction>.from(await list());
     items.removeWhere((item) => item.id == id);
     await _save(items);
   }
