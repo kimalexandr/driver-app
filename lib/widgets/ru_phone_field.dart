@@ -34,18 +34,24 @@ class RuPhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = scheme.onSurface;
+    final muted = isDark ? AppColors.nightMuted : AppColors.muted;
+
     return TextFormField(
       controller: controller,
       validator: validator,
       onChanged: onChanged,
       keyboardType: TextInputType.phone,
+      cursorColor: scheme.secondary,
       inputFormatters: const [RuPhoneInputFormatter()],
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.4,
-        color: AppColors.navy,
-        fontFeatures: [FontFeature.tabularFigures()],
+        color: textColor,
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
       decoration: InputDecoration(
         labelText: 'Телефон',
@@ -54,10 +60,10 @@ class RuPhoneField extends StatelessWidget {
           fontSize: 22,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.4,
-          color: AppColors.muted.withValues(alpha: 0.45),
+          color: muted.withValues(alpha: 0.55),
           fontFeatures: const [FontFeature.tabularFigures()],
         ),
-        prefixIcon: const SizedBox(
+        prefixIcon: SizedBox(
           width: 56,
           child: Center(
             child: Text(
@@ -65,7 +71,7 @@ class RuPhoneField extends StatelessWidget {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: AppColors.navy,
+                color: textColor,
               ),
             ),
           ),

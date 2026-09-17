@@ -225,9 +225,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       textInputAction: index == 3
                           ? TextInputAction.done
                           : TextInputAction.next,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       decoration: const InputDecoration(
                         counterText: '',

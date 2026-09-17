@@ -148,7 +148,9 @@ class _DriverAppState extends State<DriverApp> {
         title: '7Rights Driver',
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        themeMode: ThemeMode.system,
+        // Светлая по умолчанию: тёмный текст всегда читаем на дороге.
+        // Системная тёмная тема тоже поддерживается с высоким контрастом.
+        themeMode: ThemeMode.light,
         home: !_ready
             ? const Scaffold(
                 backgroundColor: AppColors.sand,
