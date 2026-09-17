@@ -405,6 +405,17 @@ String tripStatusChangedAt(Trip trip, String stepId) {
   }
 }
 
+/// Дата/время последней смены текущего статуса рейса.
+String tripCurrentStatusChangedAt(Trip trip) {
+  if (trip.isCompleted) return tripStatusChangedAt(trip, 'delivered');
+  if (trip.isInTransit) return tripStatusChangedAt(trip, 'transit');
+  if (trip.canStart) return tripStatusChangedAt(trip, 'assigned');
+  for (var i = trip.statusHistory.length - 1; i >= 0; i--) {
+    if (trip.statusHistory[i].at.isNotEmpty) return trip.statusHistory[i].at;
+  }
+  return '';
+}
+
 bool tripMatchesQuery(Trip trip, String query) {
   final needle = query.trim().toLowerCase();
   if (needle.isEmpty) return true;

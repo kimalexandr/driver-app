@@ -370,6 +370,8 @@ class _StepTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
                 child: Text(
@@ -381,6 +383,18 @@ class _StepTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (step.changedAt.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    step.changedAt,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: current ? AppColors.orange : AppColors.navy,
+                    ),
+                  ),
+                ),
               if (current) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -401,29 +415,6 @@ class _StepTile extends StatelessWidget {
               ],
             ],
           ),
-          if (step.changedAt.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule,
-                  size: 14,
-                  color: current ? AppColors.orange : AppColors.navy,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'Статус изменён: ${step.changedAt}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: current ? AppColors.orange : AppColors.navy,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
           if (step.city.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(

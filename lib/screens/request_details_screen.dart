@@ -327,7 +327,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
               onRefresh: _reload,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -522,7 +522,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
         child: Row(
           children: [
-            StatusChip(status: _trip.status, label: _trip.statusLabel),
+            _statusWithTime(),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -564,6 +564,28 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _statusWithTime() {
+    final changedAt = tripCurrentStatusChangedAt(_trip);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        StatusChip(status: _trip.status, label: _trip.statusLabel),
+        if (changedAt.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            changedAt,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -719,19 +741,32 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) {
+        final bottomPad = MediaQuery.viewPaddingOf(context).bottom;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + bottomPad),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
                 'Доверенность',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
-              Text(text, style: const TextStyle(fontSize: 16, height: 1.45)),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    text,
+                    style: const TextStyle(fontSize: 16, height: 1.45),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: () async {
