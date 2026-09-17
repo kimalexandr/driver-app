@@ -55,6 +55,18 @@ class LocalNotifications {
   }
 
   Future<void> showTest() async {
+    await showRemote(
+      title: 'Уведомления включены',
+      body: 'Тестовое сообщение приложения водителя 7Rights.',
+      id: 71001,
+    );
+  }
+
+  Future<void> showRemote({
+    required String title,
+    required String body,
+    int id = 71002,
+  }) async {
     await init();
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -66,12 +78,7 @@ class LocalNotifications {
       ),
       iOS: DarwinNotificationDetails(),
     );
-    await _plugin.show(
-      71001,
-      'Уведомления включены',
-      'Тестовое сообщение приложения водителя 7Rights.',
-      details,
-    );
+    await _plugin.show(id, title, body, details);
   }
 }
 
@@ -96,6 +103,15 @@ class FakeLocalNotifications extends LocalNotifications {
 
   @override
   Future<void> showTest() async {
+    testShown += 1;
+  }
+
+  @override
+  Future<void> showRemote({
+    required String title,
+    required String body,
+    int id = 71002,
+  }) async {
     testShown += 1;
   }
 }

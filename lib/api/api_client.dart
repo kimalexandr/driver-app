@@ -47,6 +47,28 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+  }) {
+    return _send(
+      method: 'PUT',
+      uri: ApiConfig.path(path),
+      body: body,
+    );
+  }
+
+  Future<Map<String, dynamic>> delete(
+    String path, {
+    Map<String, dynamic>? body,
+  }) {
+    return _send(
+      method: 'DELETE',
+      uri: ApiConfig.path(path),
+      body: body,
+    );
+  }
+
   Future<Map<String, dynamic>> postMultipart(
     String path, {
     required String fileField,
@@ -86,6 +108,14 @@ class ApiClient {
         case 'PATCH':
           response = await _http
               .patch(uri, headers: headers, body: encoded)
+              .timeout(ApiConfig.timeout);
+        case 'PUT':
+          response = await _http
+              .put(uri, headers: headers, body: encoded)
+              .timeout(ApiConfig.timeout);
+        case 'DELETE':
+          response = await _http
+              .delete(uri, headers: headers, body: encoded)
               .timeout(ApiConfig.timeout);
         default:
           throw ApiException('Неподдерживаемый метод $method');

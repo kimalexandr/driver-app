@@ -61,6 +61,14 @@ class _DriverAppState extends State<DriverApp> {
   void _syncTracker() {
     if (_auth.isLoggedIn) {
       widget.dependencies.locationTracker.start();
+      final owner = _auth.driver?.id;
+      if (owner != null && owner.isNotEmpty) {
+        // ignore: discarded_futures
+        widget.dependencies.push.sync(
+          api: widget.dependencies.api,
+          owner: owner,
+        );
+      }
     } else {
       widget.dependencies.locationTracker.stop();
     }
@@ -81,6 +89,7 @@ class _DriverAppState extends State<DriverApp> {
       locationService: widget.dependencies.locationService,
       locationTracker: widget.dependencies.locationTracker,
       pep: widget.dependencies.pep,
+      push: widget.dependencies.push,
       auth: _auth,
       child: MaterialApp(
         navigatorKey: _navigatorKey,

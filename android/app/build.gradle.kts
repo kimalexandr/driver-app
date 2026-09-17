@@ -35,6 +35,13 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Project ID из RuStore Console → Push-уведомления → Проекты.
+        // Передайте -PRUSTORE_PUSH_PROJECT_ID=... или env RUSTORE_PUSH_PROJECT_ID.
+        val rustoreProjectId =
+            (project.findProperty("RUSTORE_PUSH_PROJECT_ID") as String?)
+                ?: System.getenv("RUSTORE_PUSH_PROJECT_ID")
+                ?: "YOUR_RUSTORE_PUSH_PROJECT_ID"
+        manifestPlaceholders["rustorePushProjectId"] = rustoreProjectId
     }
 
     signingConfigs {
@@ -55,6 +62,10 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

@@ -7,6 +7,7 @@ import 'package:phone_auth_app/services/max_digital_id.dart';
 import 'package:phone_auth_app/services/notification_prefs_store.dart';
 import 'package:phone_auth_app/services/pep_vault.dart';
 import 'package:phone_auth_app/services/push_registration.dart';
+import 'package:phone_auth_app/services/rustore_push_gateway.dart';
 import 'package:phone_auth_app/services/secure_kv.dart';
 import 'package:phone_auth_app/widgets/id_document_card.dart';
 import 'package:phone_auth_app/widgets/ru_license_plate.dart';
@@ -15,6 +16,8 @@ PushRegistration _push(MemorySecureKv kv, {bool permission = true}) {
   return PushRegistration(
     prefsStore: NotificationPrefsStore(kv: kv),
     notifications: FakeLocalNotifications(permissionGranted: permission),
+    rustore: FakeRuStorePushGateway(),
+    kv: kv,
   );
 }
 
@@ -105,6 +108,8 @@ void main() {
         push: PushRegistration(
           prefsStore: NotificationPrefsStore(kv: kv),
           notifications: notifications,
+          rustore: FakeRuStorePushGateway(),
+          kv: kv,
         ),
       ),
     ));

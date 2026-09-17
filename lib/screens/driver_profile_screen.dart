@@ -50,6 +50,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   NotificationPrefs _notifyPrefs = NotificationPrefs.defaults;
   bool _notifyPermission = false;
   bool _notifyBusy = false;
+  String? _pushStatus;
 
   DriverApi? get _api => widget.api ?? AppScope.maybeOf(context)?.api;
 
@@ -61,6 +62,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   PushRegistration get _push =>
       widget.push ??
+      AppScope.maybeOf(context)?.push ??
       PushRegistration(
         prefsStore: NotificationPrefsStore(),
         notifications: LocalNotifications(),
@@ -136,6 +138,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       _maxLinked = maxLinked;
       _notifyPrefs = notifyPrefs;
       _notifyPermission = notifyPermission;
+      _pushStatus = _push.lastStatus;
     });
   }
 
@@ -152,7 +155,14 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             backgroundColor: AppColors.red,
           ),
         );
+        return;
       }
+      final api = _api;
+      if (api != null) {
+        await _push.sync(api: api, owner: _owner);
+      }
+      if (!mounted) return;
+      setState(() => _pushStatus = _push.lastStatus);
     } finally {
       if (mounted) setState(() => _notifyBusy = false);
     }
@@ -164,7 +174,13 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       _notifyPrefs = prefs;
     });
     try {
-      await _push.savePrefs(_owner, prefs);
+      await _push.savePrefs(_owner, prefs, api: _api);
+      final api = _api;
+      if (api != null && prefs.enabled) {
+        await _push.sync(api: api, owner: _owner);
+      }
+      if (!mounted) return;
+      setState(() => _pushStatus = _push.lastStatus);
     } finally {
       if (mounted) setState(() => _notifyBusy = false);
     }
@@ -334,6 +350,14 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   Future<void> _logout() async {
     final scope = AppScope.maybeOf(context);
     scope?.locationTracker.stop();
+    final api = scope?.api;
+    final push = scope?.push;
+    final owner = _owner;
+    if (api != null && push != null) {
+      try {
+        await push.unregister(api: api, owner: owner);
+      } catch (_) {}
+    }
     await scope?.auth.logout();
     if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/phone', (route) => false);
@@ -399,6 +423,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     prefs: _notifyPrefs,
                     permissionGranted: _notifyPermission,
                     busy: _notifyBusy,
+                    statusText: _pushStatus,
                     onChanged: _saveNotifyPrefs,
                     onRequestPermission: _requestNotifyPermission,
                     onTest: _testNotify,

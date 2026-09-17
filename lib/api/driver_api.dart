@@ -2,6 +2,7 @@ import '../models/auth_session.dart';
 import '../models/driver_profile.dart';
 import '../models/external_auth.dart';
 import '../models/json_fields.dart';
+import '../models/notification_prefs.dart';
 import '../models/pep.dart';
 import '../models/trip.dart';
 import 'api_client.dart';
@@ -47,6 +48,21 @@ abstract class DriverApi {
     required String tripId,
     required String filePath,
   });
+
+  Future<void> registerDevice({
+    required String token,
+    required NotificationPrefs prefs,
+    String provider = 'rustore',
+    String platform = 'android',
+    String? appVersion,
+  });
+
+  Future<void> unregisterDevice({
+    required String token,
+    String provider = 'rustore',
+  });
+
+  Future<void> updateNotificationPrefs(NotificationPrefs prefs);
 }
 
 class HttpDriverApi implements DriverApi {
@@ -220,6 +236,49 @@ class HttpDriverApi implements DriverApi {
       '/trips/$tripId/files',
       fileField: 'file',
       filePath: filePath,
+    );
+  }
+
+  @override
+  Future<void> registerDevice({
+    required String token,
+    required NotificationPrefs prefs,
+    String provider = 'rustore',
+    String platform = 'android',
+    String? appVersion,
+  }) {
+    return client.post(
+      '/me/device',
+      body: {
+        'token': token,
+        'provider': provider,
+        'platform': platform,
+        if (appVersion != null && appVersion.isNotEmpty)
+          'app_version': appVersion,
+        ...prefs.toJson(),
+      },
+    );
+  }
+
+  @override
+  Future<void> unregisterDevice({
+    required String token,
+    String provider = 'rustore',
+  }) {
+    return client.delete(
+      '/me/device',
+      body: {
+        'token': token,
+        'provider': provider,
+      },
+    );
+  }
+
+  @override
+  Future<void> updateNotificationPrefs(NotificationPrefs prefs) {
+    return client.put(
+      '/me/notification-prefs',
+      body: prefs.toJson(),
     );
   }
 }

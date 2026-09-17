@@ -4,7 +4,11 @@ import 'package:phone_auth_app/api/mock_driver_api.dart';
 import 'package:phone_auth_app/api/token_store.dart';
 import 'package:phone_auth_app/screens/phone_input_screen.dart';
 import 'package:phone_auth_app/services/location_service.dart';
+import 'package:phone_auth_app/services/local_notifications.dart';
+import 'package:phone_auth_app/services/notification_prefs_store.dart';
 import 'package:phone_auth_app/services/pep_vault.dart';
+import 'package:phone_auth_app/services/push_registration.dart';
+import 'package:phone_auth_app/services/rustore_push_gateway.dart';
 import 'package:phone_auth_app/services/secure_kv.dart';
 import 'package:phone_auth_app/services/trip_location_tracker.dart';
 import 'package:phone_auth_app/state/app_scope.dart';
@@ -15,8 +19,15 @@ void main() {
     final api = MockDriverApi();
     final store = MemoryTokenStore();
     final auth = AuthController(api: api, tokenStore: store);
-    final pep = PepVault(kv: MemorySecureKv());
+    final kv = MemorySecureKv();
+    final pep = PepVault(kv: kv);
     final location = LocationService();
+    final push = PushRegistration(
+      prefsStore: NotificationPrefsStore(kv: kv),
+      notifications: FakeLocalNotifications(permissionGranted: true),
+      rustore: FakeRuStorePushGateway(),
+      kv: kv,
+    );
     await tester.pumpWidget(
       AppScope(
         api: api,
@@ -24,6 +35,7 @@ void main() {
         locationService: location,
         locationTracker: TripLocationTracker(api: api, location: location),
         pep: pep,
+        push: push,
         auth: auth,
         child: MaterialApp(
           home: const PhoneInputScreen(),

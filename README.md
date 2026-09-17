@@ -59,6 +59,16 @@ lib/
       └── ...
 ```
 
-## Лицензия
+## Уведомления (RuStore Push)
 
-MIT
+Клиент регистрирует токен устройства после входа (`POST /api/v1/driver/me/device`).
+
+Для Android-сборки нужен Project ID из RuStore Console:
+
+```bash
+flutter build apk --release -PRUSTORE_PUSH_PROJECT_ID=your_project_id
+# или
+set RUSTORE_PUSH_PROJECT_ID=your_project_id
+```
+
+На бэкенде (`prospft`): `RUSTORE_PUSH_PROJECT_ID` + `RUSTORE_PUSH_SERVICE_TOKEN` — см. `docs/driver-rustore-push.md` в репозитории prospft.

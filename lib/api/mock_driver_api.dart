@@ -1,6 +1,7 @@
 import '../models/auth_session.dart';
 import '../models/driver_profile.dart';
 import '../models/external_auth.dart';
+import '../models/notification_prefs.dart';
 import '../models/pep.dart';
 import '../models/trip.dart';
 import 'api_exception.dart';
@@ -327,4 +328,22 @@ class MockDriverApi implements DriverApi {
   }) async {
     await getTrip(tripId);
   }
+
+  @override
+  Future<void> registerDevice({
+    required String token,
+    required NotificationPrefs prefs,
+    String provider = 'rustore',
+    String platform = 'android',
+    String? appVersion,
+  }) async {}
+
+  @override
+  Future<void> unregisterDevice({
+    required String token,
+    String provider = 'rustore',
+  }) async {}
+
+  @override
+  Future<void> updateNotificationPrefs(NotificationPrefs prefs) async {}
 }

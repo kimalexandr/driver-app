@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/driver_api.dart';
 import '../api/token_store.dart';
+import '../services/local_notifications.dart';
 import '../services/location_service.dart';
+import '../services/notification_prefs_store.dart';
 import '../services/pep_vault.dart';
+import '../services/push_registration.dart';
 import '../services/trip_location_tracker.dart';
 import 'auth_controller.dart';
 
@@ -14,6 +17,7 @@ class AppScope extends InheritedNotifier<AuthController> {
   final LocationService locationService;
   final TripLocationTracker locationTracker;
   final PepVault pep;
+  final PushRegistration push;
 
   const AppScope({
     super.key,
@@ -22,6 +26,7 @@ class AppScope extends InheritedNotifier<AuthController> {
     required this.locationService,
     required this.locationTracker,
     required this.pep,
+    required this.push,
     required AuthController auth,
     required super.child,
   }) : super(notifier: auth);
@@ -47,6 +52,7 @@ class AppDependencies {
   final LocationService locationService;
   final TripLocationTracker locationTracker;
   final PepVault pep;
+  final PushRegistration push;
 
   AppDependencies._({
     required this.tokenStore,
@@ -56,6 +62,7 @@ class AppDependencies {
     required this.locationService,
     required this.locationTracker,
     required this.pep,
+    required this.push,
   });
 
   factory AppDependencies({
@@ -64,6 +71,7 @@ class AppDependencies {
     ApiClient? client,
     LocationService? locationService,
     PepVault? pep,
+    PushRegistration? push,
   }) {
     final store = tokenStore ?? SecureTokenStore();
     final resolvedClient = client ?? ApiClient(tokenStore: store);
@@ -71,8 +79,17 @@ class AppDependencies {
     final auth = AuthController(api: resolvedApi, tokenStore: store);
     final resolvedLocation = locationService ?? LocationService();
     final tracker = TripLocationTracker(api: resolvedApi, location: resolvedLocation);
+    final resolvedPush = push ??
+        PushRegistration(
+          prefsStore: NotificationPrefsStore(),
+          notifications: LocalNotifications(),
+        );
     resolvedClient.onUnauthorized = () async {
       tracker.stop();
+      final owner = auth.driver?.id ?? 'local';
+      try {
+        await resolvedPush.unregister(api: resolvedApi, owner: owner);
+      } catch (_) {}
       await auth.onUnauthorized();
     };
     return AppDependencies._(
@@ -83,6 +100,7 @@ class AppDependencies {
       locationService: resolvedLocation,
       locationTracker: tracker,
       pep: pep ?? PepVault(),
+      push: resolvedPush,
     );
   }
 }

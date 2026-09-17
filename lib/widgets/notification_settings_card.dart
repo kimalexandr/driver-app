@@ -7,6 +7,7 @@ class NotificationSettingsCard extends StatelessWidget {
   final NotificationPrefs prefs;
   final bool permissionGranted;
   final bool busy;
+  final String? statusText;
   final ValueChanged<NotificationPrefs>? onChanged;
   final VoidCallback? onRequestPermission;
   final VoidCallback? onTest;
@@ -16,6 +17,7 @@ class NotificationSettingsCard extends StatelessWidget {
     required this.prefs,
     required this.permissionGranted,
     this.busy = false,
+    this.statusText,
     this.onChanged,
     this.onRequestPermission,
     this.onTest,
@@ -84,9 +86,14 @@ class NotificationSettingsCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Серверные пуши подключим позже; настройки сохраняются на этом телефоне.',
-              style: TextStyle(color: AppColors.ink, height: 1.4, fontSize: 14),
+            Text(
+              statusText ??
+                  'RuStore Push: токен регистрируется после входа. Настройки также сохраняются на телефоне.',
+              style: const TextStyle(
+                color: AppColors.ink,
+                height: 1.4,
+                fontSize: 14,
+              ),
             ),
             if (!permissionGranted) ...[
               const SizedBox(height: 12),
