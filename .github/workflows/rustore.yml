@@ -78,9 +78,11 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
           printf '%s\n' "$KEY_PROPERTIES" > android/key.properties
-          # storeFile в key.properties должен указывать на upload-keystore.jks
-          if ! grep -q 'storeFile=' android/key.properties; then
-            echo 'storeFile=upload-keystore.jks' >> android/key.properties
+          # storeFile резолвится из android/app/ — путь к jks в android/
+          if grep -q '^storeFile=' android/key.properties; then
+            sed -i 's|^storeFile=.*|storeFile=../upload-keystore.jks|' android/key.properties
+          else
+            echo 'storeFile=../upload-keystore.jks' >> android/key.properties
           fi
 
       - name: Build APK
