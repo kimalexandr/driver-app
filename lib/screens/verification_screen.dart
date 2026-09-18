@@ -140,11 +140,28 @@ class _VerificationScreenState extends State<VerificationScreen> {
       await scope.pep.linkProvider(AuthProviderKind.sms);
       await scope.auth.applySession(session);
       final driverId = session.driver.id.trim();
+      String? pushStatus;
       if (driverId.isNotEmpty) {
-        await scope.push.sync(api: scope.api, owner: driverId);
+        try {
+          await scope.push.sync(api: scope.api, owner: driverId);
+        } catch (_) {}
+        pushStatus = scope.push.lastStatus;
+      } else {
+        pushStatus = 'Нет id водителя — push не зарегистрирован';
       }
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/trips', (route) => false);
+      if (pushStatus != null && pushStatus.isNotEmpty) {
+        final ok = pushStatus.contains('подключён') ||
+            pushStatus.contains('на сервере');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(pushStatus),
+            backgroundColor: ok ? AppColors.navy : AppColors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

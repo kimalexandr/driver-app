@@ -6,6 +6,7 @@ import '../models/notification_prefs.dart';
 import 'local_notifications.dart';
 import 'notification_prefs_store.dart';
 import 'rustore_push_gateway.dart';
+import 'rustore_push_sdk_bridge.dart';
 import 'rustore_push_sdk_gateway.dart';
 import 'secure_kv.dart';
 
@@ -73,15 +74,18 @@ class PushRegistration {
     required String owner,
   }) async {
     if (owner.trim().isEmpty) {
-      lastStatus = 'Нет id водителя';
+      lastStatus = 'Нет id водителя — /me/device не вызван';
+      debugPrint('[push] sync abort: empty owner');
       return;
     }
 
     await notifications.init();
+    RuStorePushSdkBridge.ensureSetup();
 
     final prefs = await prefsStore.read(owner);
     if (!prefs.enabled) {
       lastStatus = 'Уведомления выключены в настройках';
+      debugPrint('[push] sync abort: prefs disabled');
       return;
     }
 
@@ -89,8 +93,9 @@ class PushRegistration {
     if (!permission) {
       permission = await notifications.requestPermission();
     }
-    // Токен регистрируем даже без разрешения показа: иначе /me/device
-    // никогда не вызывается, и серверу некуда слать пуш.
+
+    final available = await rustore.available();
+    debugPrint('[push] available=$available err=${RuStorePushSdkBridge.lastError}');
 
     await _ensureListen(api: api, owner: owner);
 
@@ -101,20 +106,31 @@ class PushRegistration {
     }
 
     final token = await _waitForToken();
+    debugPrint(
+      '[push] token=${token == null || token.isEmpty ? "empty" : "ok(${token.length})"} '
+      'err=${RuStorePushSdkBridge.lastError}',
+    );
+
     if (token == null || token.isEmpty) {
-      final available = await rustore.available();
-      lastStatus = available
-          ? 'Не удалось получить push-токен'
-          : 'RuStore Push недоступен на устройстве';
-      if (!permission) {
+      final sdkError = RuStorePushSdkBridge.lastError;
+      if (!available) {
+        lastStatus =
+            'RuStore недоступен на устройстве (нужны RuStore + вход в аккаунт)';
+      } else if (sdkError != null && sdkError.isNotEmpty) {
+        lastStatus = 'Нет push-токена: $sdkError';
+      } else if (!permission) {
         lastStatus = 'Нет разрешения ОС и нет push-токена';
+      } else {
+        lastStatus =
+            'Нет push-токена (проверьте Project ID в APK и RuStore на телефоне)';
       }
+      // Без токена POST /me/device некуда слать — строка в БД не появится.
       return;
     }
 
     await _registerToken(api: api, owner: owner, token: token);
-    if (!permission) {
-      lastStatus = 'Токен зарегистрирован, включите уведомления в ОС';
+    if (!permission && lastStatus == 'RuStore Push подключён') {
+      lastStatus = 'Токен на сервере, включите уведомления в ОС';
     }
   }
 
@@ -128,6 +144,7 @@ class PushRegistration {
       await rustore.listen(
         onNewToken: (token) {
           lastToken = token;
+          debugPrint('[push] onNewToken len=${token.length}');
           // ignore: discarded_futures
           _registerToken(api: api, owner: owner, token: token);
         },
@@ -144,17 +161,19 @@ class PushRegistration {
           }
         },
       );
-    } catch (_) {
+    } catch (error) {
       _listening = false;
+      RuStorePushSdkBridge.lastError = '$error';
+      debugPrint('[push] listen failed: $error');
     }
   }
 
   Future<String?> _waitForToken() async {
-    for (var attempt = 0; attempt < 6; attempt++) {
+    for (var attempt = 0; attempt < 8; attempt++) {
       final token = await rustore.getToken();
       if (token != null && token.isNotEmpty) return token;
       if (lastToken != null && lastToken!.isNotEmpty) return lastToken;
-      await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+      await Future<void>.delayed(Duration(milliseconds: 400 * (attempt + 1)));
     }
     final fallback = await rustore.getToken();
     if (fallback != null && fallback.isNotEmpty) return fallback;
@@ -190,22 +209,27 @@ class PushRegistration {
     lastToken = token;
     await _kv.write('$_tokenKeyPrefix$owner', token);
     try {
+      debugPrint('[push] POST /me/device owner=$owner');
       await api.registerDevice(
         token: token,
         prefs: prefs,
+        provider: 'rustore',
         platform: defaultTargetPlatform == TargetPlatform.android
             ? 'android'
             : 'unknown',
         appVersion: appVersion,
       );
       lastStatus = 'RuStore Push подключён';
+      debugPrint('[push] register ok');
     } on ApiException catch (error) {
+      debugPrint('[push] register ApiException ${error.statusCode} ${error.message}');
       if (error.statusCode == 404 || error.statusCode == 501) {
         lastStatus = 'Сервер ещё без push API';
         return;
       }
       lastStatus = 'Ошибка регистрации: ${error.message}';
-    } catch (_) {
+    } catch (error) {
+      debugPrint('[push] register error: $error');
       lastStatus = 'Ошибка регистрации токена';
     }
   }

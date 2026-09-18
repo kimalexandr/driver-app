@@ -58,9 +58,13 @@ class SdkRuStorePushGateway implements RuStorePushGateway {
         onNewToken: onNewToken,
         onMessage: onMessage,
         onOpenMessage: onOpenMessage,
+        onError: (error) {
+          RuStorePushSdkBridge.lastError = '$error';
+        },
       );
-    } catch (_) {
+    } catch (error) {
       _listening = false;
+      RuStorePushSdkBridge.lastError = '$error';
     }
   }
 }

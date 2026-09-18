@@ -31,12 +31,10 @@ class NotificationSettingsCard extends StatelessWidget {
       return 'Уведомления выключены.';
     }
     final raw = (statusText ?? '').trim();
-    // Технические строки RuStore водителю не показываем.
-    if (raw.isEmpty ||
-        raw.toLowerCase().contains('rustore') ||
-        raw.toLowerCase().contains('токен')) {
+    if (raw.isEmpty) {
       return 'Будут приходить выбранные события.';
     }
+    // Показываем реальный статус регистрации (в т.ч. ошибки RuStore/токена).
     return raw;
   }
 
