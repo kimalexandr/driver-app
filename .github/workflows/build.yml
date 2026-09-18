@@ -34,6 +34,21 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Decode Android keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_PROPERTIES" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_PROPERTIES не заданы — APK будет с debug-подписью."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
+          printf '%s\n' "$KEY_PROPERTIES" > android/key.properties
+          if ! grep -q 'storeFile=' android/key.properties; then
+            echo 'storeFile=upload-keystore.jks' >> android/key.properties
+          fi
+
       - name: Build APK
         env:
           RUSTORE_PUSH_PROJECT_ID: ${{ secrets.RUSTORE_PUSH_PROJECT_ID }}
