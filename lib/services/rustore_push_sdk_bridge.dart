@@ -32,7 +32,7 @@ class RuStorePushSdkBridge {
     lastError = null;
     try {
       final token = await RustorePushClient.getToken();
-      final value = '$token'.trim();
+      final value = token.toString().trim();
       if (value.isEmpty || value == 'null') return null;
       return value;
     } catch (error) {
@@ -62,7 +62,7 @@ class RuStorePushSdkBridge {
     ensureSetup();
     return RustorePushClient.attachCallbacks(
       onNewToken: (token) {
-        final value = '$token'.trim();
+        final value = token.toString().trim();
         if (value.isNotEmpty && value != 'null') {
           onNewToken(value);
         }
