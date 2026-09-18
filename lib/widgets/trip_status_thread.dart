@@ -340,25 +340,35 @@ ThreadStep _stepFromStop(
 
 String _currentStepId(Trip trip) {
   if (trip.isCompleted) return 'delivered';
+
+  // Назначен / создан — всегда «погрузка», не выгрузка.
   if (trip.canStart) {
     if (trip.stops.isNotEmpty) {
       final index = trip.stops.indexWhere((stop) => stop.isLoad);
-      return 'stop_${index < 0 ? 0 : index}';
+      if (index >= 0) return 'stop_$index';
+      // Нет точки погрузки в stops — не подсвечиваем выгрузку.
+      return 'assigned';
     }
     return 'load';
   }
-  if (trip.isInTransit && trip.stops.isNotEmpty) {
-    final lastLoad = trip.stops.lastIndexWhere((stop) => stop.isLoad);
-    if (lastLoad >= 0 && lastLoad < trip.stops.length - 1) return 'transit';
-    final unload = trip.stops.lastIndexWhere((stop) => stop.isUnload);
-    return 'stop_${unload >= 0 ? unload : trip.stops.length - 1}';
+
+  // В пути — текущий шаг «в пути», пока рейс не доставлен.
+  if (trip.isInTransit) {
+    if (trip.stops.isNotEmpty) {
+      final hasLoad = trip.stops.any((stop) => stop.isLoad);
+      final hasUnload = trip.stops.any((stop) => stop.isUnload);
+      if (hasLoad && hasUnload) return 'transit';
+      // Нет отдельной точки «в пути» в списке остановок — держим transit в линейном сценарии.
+    }
+    return 'transit';
   }
-  if (trip.isInTransit) return 'transit';
+
+  // Неизвестный статус: не прыгаем на выгрузку по умолчанию.
   if (trip.stops.isNotEmpty) {
-    final index = trip.stops.lastIndexWhere((stop) => stop.isUnload);
-    return index >= 0 ? 'stop_$index' : 'stop_${trip.stops.length - 1}';
+    final load = trip.stops.indexWhere((stop) => stop.isLoad);
+    if (load >= 0) return 'stop_$load';
   }
-  return 'unload';
+  return 'load';
 }
 
 String _transitHint(Trip trip, ThreadPhase phase) {

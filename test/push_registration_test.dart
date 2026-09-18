@@ -11,19 +11,40 @@ void main() {
   test('PushRegistration регистрирует RuStore-токен на API', () async {
     final kv = MemorySecureKv();
     final gateway = FakeRuStorePushGateway(token: 'tok-1');
+    final api = _TrackingApi();
     final push = PushRegistration(
       prefsStore: NotificationPrefsStore(kv: kv),
       notifications: FakeLocalNotifications(permissionGranted: true),
       rustore: gateway,
       kv: kv,
     );
-    final api = MockDriverApi();
 
     await push.sync(api: api, owner: 'd1');
 
     expect(push.lastToken, 'tok-1');
     expect(push.lastStatus, 'RuStore Push подключён');
     expect(gateway.listenCalls, 1);
+    expect(api.registerCalls, greaterThanOrEqualTo(1));
+    expect(api.lastToken, 'tok-1');
+  });
+
+  test('PushRegistration запрашивает разрешение и всё равно регистрирует токен',
+      () async {
+    final kv = MemorySecureKv();
+    final notifications = FakeLocalNotifications(permissionGranted: false);
+    final api = _TrackingApi();
+    final push = PushRegistration(
+      prefsStore: NotificationPrefsStore(kv: kv),
+      notifications: notifications,
+      rustore: FakeRuStorePushGateway(token: 'tok-2'),
+      kv: kv,
+    );
+
+    await push.sync(api: api, owner: '155');
+
+    expect(notifications.permissionGranted, isTrue);
+    expect(api.registerCalls, greaterThanOrEqualTo(1));
+    expect(api.lastToken, 'tok-2');
   });
 
   test('PushRegistration сохраняет prefs локально и на API', () async {
@@ -57,4 +78,21 @@ void main() {
     await push.sync(api: MockDriverApi(), owner: 'd1');
     expect(opened, 'trip-42');
   });
+}
+
+class _TrackingApi extends MockDriverApi {
+  int registerCalls = 0;
+  String? lastToken;
+
+  @override
+  Future<void> registerDevice({
+    required String token,
+    required NotificationPrefs prefs,
+    String provider = 'rustore',
+    String platform = 'android',
+    String? appVersion,
+  }) async {
+    registerCalls += 1;
+    lastToken = token;
+  }
 }

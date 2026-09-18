@@ -139,6 +139,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
       );
       await scope.pep.linkProvider(AuthProviderKind.sms);
       await scope.auth.applySession(session);
+      final driverId = session.driver.id.trim();
+      if (driverId.isNotEmpty) {
+        await scope.push.sync(api: scope.api, owner: driverId);
+      }
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/trips', (route) => false);
     } on ApiException catch (error) {

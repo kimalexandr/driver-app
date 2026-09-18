@@ -51,6 +51,38 @@ void main() {
     expect(steps[3].phase, ThreadPhase.upcoming);
   });
 
+  test('assigned with only unload stop still highlights loading, not unload', () {
+    final steps = tripThreadSteps(base.copyWith(
+      stops: const [
+        TripStop(type: 'unload', title: 'СПб', address: 'Невский'),
+      ],
+    ));
+    final current = steps.where((step) => step.phase == ThreadPhase.current).toList();
+    expect(current, isNotEmpty);
+    expect(current.single.id, 'assigned');
+    expect(
+      steps.where((step) => step.title == 'Выгрузка' && step.phase == ThreadPhase.current),
+      isEmpty,
+    );
+  });
+
+  test('in_transit with stops keeps transit as current, not unload', () {
+    final steps = tripThreadSteps(base.copyWith(
+      status: 'in_transit',
+      statusLabel: 'В пути',
+      stops: const [
+        TripStop(type: 'load', title: 'Москва'),
+        TripStop(type: 'unload', title: 'СПб'),
+      ],
+      statusHistory: const [
+        StatusEvent(status: 'in_transit', label: 'В пути', at: '15.03.2024 10:20'),
+      ],
+    ));
+    final current = steps.where((step) => step.phase == ThreadPhase.current).single;
+    expect(current.id, 'transit');
+    expect(current.changedAt, '15.03.2024 10:20');
+  });
+
   test('delivered trip marks the whole thread done', () {
     final steps = tripThreadSteps(base.copyWith(
       status: 'delivered',

@@ -899,6 +899,7 @@ class Trip {
     String? status,
     String? statusLabel,
     List<StatusEvent>? statusHistory,
+    List<TripStop>? stops,
   }) {
     return Trip(
       id: id,
@@ -927,7 +928,7 @@ class Trip {
       sender: sender,
       recipient: recipient,
       shipments: shipments,
-      stops: stops,
+      stops: stops ?? this.stops,
       loadWindowFrom: loadWindowFrom,
       loadWindowTo: loadWindowTo,
       unloadWindowFrom: unloadWindowFrom,

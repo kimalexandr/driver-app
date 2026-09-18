@@ -113,8 +113,8 @@ class _DriverAppState extends State<DriverApp> {
   void _syncTracker() {
     if (_auth.isLoggedIn) {
       widget.dependencies.locationTracker.start();
-      final owner = _auth.driver?.id;
-      if (owner != null && owner.isNotEmpty) {
+      final owner = (_auth.driver?.id ?? '').trim();
+      if (owner.isNotEmpty) {
         // ignore: discarded_futures
         widget.dependencies.push.sync(
           api: widget.dependencies.api,

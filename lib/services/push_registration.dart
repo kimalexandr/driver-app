@@ -24,6 +24,7 @@ class PushRegistration {
 
   String? lastStatus;
   String? lastToken;
+  bool _listening = false;
 
   PushRegistration({
     NotificationPrefsStore? prefsStore,
@@ -66,44 +67,32 @@ class PushRegistration {
     return notifications.hasPermission();
   }
 
+  /// После логина / restore: запросить разрешение, получить токен, POST /me/device.
   Future<void> sync({
     required DriverApi api,
     required String owner,
   }) async {
+    if (owner.trim().isEmpty) {
+      lastStatus = 'Нет id водителя';
+      return;
+    }
+
+    await notifications.init();
+
     final prefs = await prefsStore.read(owner);
-    final permission = await notifications.hasPermission();
-    if (!permission || !prefs.enabled) {
-      lastStatus = permission
-          ? 'Уведомления выключены в настройках'
-          : 'Нет разрешения ОС';
+    if (!prefs.enabled) {
+      lastStatus = 'Уведомления выключены в настройках';
       return;
     }
 
-    final available = await rustore.available();
-    if (!available) {
-      lastStatus = 'RuStore Push недоступен на устройстве';
-      return;
+    var permission = await notifications.hasPermission();
+    if (!permission) {
+      permission = await notifications.requestPermission();
     }
+    // Токен регистрируем даже без разрешения показа: иначе /me/device
+    // никогда не вызывается, и серверу некуда слать пуш.
 
-    await rustore.listen(
-      onNewToken: (token) {
-        lastToken = token;
-        // ignore: discarded_futures
-        _registerToken(api: api, owner: owner, token: token);
-      },
-      onMessage: (title, body, data) async {
-        await notifications.showRemote(
-          title: title ?? '7Rights',
-          body: body ?? '',
-        );
-      },
-      onOpenMessage: (data) {
-        final tripId = _tripIdFrom(data);
-        if (tripId != null) {
-          onOpenTrip?.call(tripId);
-        }
-      },
-    );
+    await _ensureListen(api: api, owner: owner);
 
     final initial = await rustore.initialMessageData();
     final initialTripId = _tripIdFrom(initial);
@@ -111,12 +100,65 @@ class PushRegistration {
       onOpenTrip?.call(initialTripId);
     }
 
-    final token = await rustore.getToken();
+    final token = await _waitForToken();
     if (token == null || token.isEmpty) {
-      lastStatus = 'Не удалось получить push-токен';
+      final available = await rustore.available();
+      lastStatus = available
+          ? 'Не удалось получить push-токен'
+          : 'RuStore Push недоступен на устройстве';
+      if (!permission) {
+        lastStatus = 'Нет разрешения ОС и нет push-токена';
+      }
       return;
     }
+
     await _registerToken(api: api, owner: owner, token: token);
+    if (!permission) {
+      lastStatus = 'Токен зарегистрирован, включите уведомления в ОС';
+    }
+  }
+
+  Future<void> _ensureListen({
+    required DriverApi api,
+    required String owner,
+  }) async {
+    if (_listening) return;
+    _listening = true;
+    try {
+      await rustore.listen(
+        onNewToken: (token) {
+          lastToken = token;
+          // ignore: discarded_futures
+          _registerToken(api: api, owner: owner, token: token);
+        },
+        onMessage: (title, body, data) async {
+          await notifications.showRemote(
+            title: title ?? '7Rights',
+            body: body ?? '',
+          );
+        },
+        onOpenMessage: (data) {
+          final tripId = _tripIdFrom(data);
+          if (tripId != null) {
+            onOpenTrip?.call(tripId);
+          }
+        },
+      );
+    } catch (_) {
+      _listening = false;
+    }
+  }
+
+  Future<String?> _waitForToken() async {
+    for (var attempt = 0; attempt < 6; attempt++) {
+      final token = await rustore.getToken();
+      if (token != null && token.isNotEmpty) return token;
+      if (lastToken != null && lastToken!.isNotEmpty) return lastToken;
+      await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+    }
+    final fallback = await rustore.getToken();
+    if (fallback != null && fallback.isNotEmpty) return fallback;
+    return lastToken;
   }
 
   Future<void> unregister({
