@@ -52,37 +52,14 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
             key: _formKey,
             child: ListView(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppColors.navy,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.local_shipping_outlined,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 28),
                 const Text(
-                  '7Rights',
+                  '7RIGHTS DRIVER',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.orange,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Вход водителя',
-                  style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.w800,
                     height: 1.1,
                     color: AppColors.navy,
+                    letterSpacing: 0.6,
                   ),
                 ),
                 const SizedBox(height: 12),

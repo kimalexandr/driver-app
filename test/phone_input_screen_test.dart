@@ -48,6 +48,7 @@ void main() {
 
     expect(find.text('Госуслуги'), findsNothing);
     expect(find.text('Госключ'), findsNothing);
+    expect(find.text('7RIGHTS DRIVER'), findsOneWidget);
     expect(find.text('Получить код'), findsOneWidget);
     expect(find.text('+7'), findsOneWidget);
 

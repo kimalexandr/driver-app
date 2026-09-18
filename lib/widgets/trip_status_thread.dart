@@ -45,14 +45,7 @@ class TripStatusThread extends StatelessWidget {
                   ),
                 ),
               ),
-              if (km.isNotEmpty)
-                Text(
-                  km,
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              _HeaderMeta(trip: trip, km: km),
             ],
           ),
           const SizedBox(height: 14),
@@ -64,6 +57,51 @@ class TripStatusThread extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _HeaderMeta extends StatelessWidget {
+  final Trip trip;
+  final String km;
+
+  const _HeaderMeta({required this.trip, required this.km});
+
+  @override
+  Widget build(BuildContext context) {
+    final changedAt = tripCurrentStatusChangedAt(trip);
+    final label = trip.statusLabel.isNotEmpty ? trip.statusLabel : trip.status;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (label.isNotEmpty)
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+        if (changedAt.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            changedAt,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.orange,
+            ),
+          ),
+        ] else if (km.isNotEmpty)
+          Text(
+            km,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+      ],
     );
   }
 }

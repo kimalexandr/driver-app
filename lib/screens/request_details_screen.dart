@@ -14,7 +14,6 @@ import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/etrn_titles.dart';
 import '../widgets/ru_license_plate.dart';
-import '../widgets/status_chip.dart';
 import '../widgets/trip_deadline_banner.dart';
 import '../widgets/trip_status_thread.dart';
 
@@ -522,8 +521,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
         child: Row(
           children: [
-            _statusWithTime(),
-            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,28 +561,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _statusWithTime() {
-    final changedAt = tripCurrentStatusChangedAt(_trip);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        StatusChip(status: _trip.status, label: _trip.statusLabel),
-        if (changedAt.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(
-            changedAt,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.navy,
-            ),
-          ),
-        ],
-      ],
     );
   }
 

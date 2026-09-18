@@ -8,7 +8,6 @@ import '../models/trip.dart';
 import '../services/yandex_maps.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
-import '../widgets/status_chip.dart';
 import '../widgets/trip_deadline_banner.dart';
 import '../widgets/trip_list_skeleton.dart';
 import 'driver_profile_screen.dart';
@@ -330,6 +329,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               itemCount: trips.length,
               itemBuilder: (context, index) {
                 final trip = trips[index];
+                final statusAt = tripCurrentStatusChangedAt(trip);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: Material(
@@ -355,10 +355,24 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                     ),
                                   ),
                                 ),
-                                StatusChip(
-                                  status: trip.status,
-                                  label: trip.statusLabel,
-                                ),
+                                if (statusAt.isNotEmpty)
+                                  Text(
+                                    statusAt,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.muted,
+                                    ),
+                                  )
+                                else if (trip.statusLabel.isNotEmpty)
+                                  Text(
+                                    trip.statusLabel,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 14),

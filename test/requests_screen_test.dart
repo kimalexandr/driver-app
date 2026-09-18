@@ -21,7 +21,7 @@ void main() {
     expect(find.text('Москва → Санкт-Петербург'), findsOneWidget);
     expect(find.text('Казань → Екатеринбург'), findsOneWidget);
     expect(find.textContaining('15.03.2024 10:00'), findsWidgets);
-    expect(find.text('Назначен'), findsOneWidget);
+    expect(find.text('14.03.2024 18:40'), findsOneWidget);
     expect(find.byIcon(Icons.person_outline), findsOneWidget);
 
     await tester.tap(find.text('Рейс №001'));
